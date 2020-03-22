@@ -33,6 +33,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.jgrapht.Graph;
+
+import org.jgrapht.alg.color.*;
+import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.graph.SimpleGraph;
+
 import org.uma.jmetal.problem.permutationproblem.impl.AbstractIntegerPermutationProblem;
 import org.uma.jmetal.solution.permutationsolution.PermutationSolution;
 
@@ -42,12 +49,32 @@ import org.uma.jmetal.solution.permutationsolution.PermutationSolution;
  */
 public class ETP extends AbstractIntegerPermutationProblem
 {
+    class Exam
+    {
+        int examId,examDuration,studentsCount=0;
+        ArrayList<Integer> enrollmentList = new ArrayList<>();
+
+        Exam(int id, int duration)
+        {
+            examId=id;
+            examDuration=duration;
+        }
+
+        void addStudent(Integer student)
+        {
+            enrollmentList.add(student);
+            studentsCount++;
+        }
+    }
+    
     private int numberOfExams,numberOfPeriods,numberOfRooms;
     private int [][] matrix;
-    
+    private int [][] ttable;
+    Graph<Integer, DefaultEdge> exGraph = new SimpleGraph<>(DefaultEdge.class);
     
     Map <Integer,List> studentMap = new HashMap<>();
     ArrayList<Exam> examVector;
+    GreedyColoring exGraphColored;
     
     public ETP(String conflictFile) throws IOException
     {
@@ -62,8 +89,20 @@ public class ETP extends AbstractIntegerPermutationProblem
     @Override
     public void evaluate(PermutationSolution<Integer> solution) 
     {
+        int fitness=0;
         
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        for(int i=0; i<=numberOfExams-1;i++)
+        {
+            for(int j=i+1; j<=numberOfExams;j++)
+            {
+                for(int p=0;p<=exGraphColored.getColoring().getNumberColors();p++)
+                {
+                    fitness+=ttable[i][p]*ttable[j][p]*matrix[i][j];
+                }
+            }
+        }
+        
+        solution.setObjective(0, fitness);
     }
 
     @Override
@@ -93,6 +132,9 @@ public class ETP extends AbstractIntegerPermutationProblem
         readRooms(token,found);
         readConstraints(token,found);
         readWeightings(token,found);
+        createGraph(matrix);
+        exGraphColored = new GreedyColoring(exGraph);
+        createTTable();
         
         System.out.println("Reading Successful.");
         
@@ -218,30 +260,6 @@ public class ETP extends AbstractIntegerPermutationProblem
                 }
             }
         }
-
-        //ArrayList ConflictMatrix
-//        System.out.println("DISPLAYING ArrayList CONFLICT MARIX:\n");
-//        for(int i=0;i<numberOfExams;i++)
-//        {
-//            for(int j=0;j<numberOfExams;j++)
-//            {
-//                System.out.print(conflictMatrix.get(i).get(j)+", ");
-//                //System.out.print(matrix[i][j]+", ");
-//            }
-//            System.out.println();
-//        }  
-        
-        //int Matrix ConflictMatrix
-//        System.out.println("DISPLAYING int[][] Matrix CONFLICT MARIX:\n");
-//        for(int i=0;i<numberOfExams;i++)
-//        {
-//            for(int j=0;j<numberOfExams;j++)
-//            {
-//                //System.out.print(conflictMatrix.get(i).get(j)+", ");
-//                System.out.print(matrix[i][j]+", ");
-//            }
-//            System.out.println();
-//        } 
         return matrix;
     }
     
@@ -398,22 +416,52 @@ public class ETP extends AbstractIntegerPermutationProblem
             }
     }
     
-}
-
-class Exam
-{
-    int examId,examDuration,studentsCount=0;
-    ArrayList<Integer> enrollmentList = new ArrayList<>();
-    
-    Exam(int id, int duration)
+    void createGraph(int[][] cMat)
     {
-        examId=id;
-        examDuration=duration;
+        for(int v1=1;v1<=numberOfExams;v1++)exGraph.addVertex(v1);
+ 
+        System.out.println("Vertices in graph: "+exGraph.vertexSet());
+        for(int v1=1;v1<=numberOfExams;v1++)
+        {
+            for(int v2=1;v2<=numberOfExams;v2++)
+            {
+                if(cMat[v1-1][v2-1]!=0)exGraph.addEdge(v1, v2);
+            }
+        }
+        
+        System.out.println("Adjacency List: ");
+        for(int v1=1;v1<=numberOfExams;v1++)System.out.println(exGraph.edgesOf(v1));
     }
     
-    void addStudent(Integer student)
+    void createTTable()
     {
-        enrollmentList.add(student);
-        studentsCount++;
+        int E = numberOfExams;
+        int P = exGraphColored.getColoring().getNumberColors();
+        ttable = new int[E][P];
+        for(int i=0;i<E;i++)
+        {
+            for(int p=0;p<P;p++)
+            {
+                if ((int)exGraphColored.getColoring().getColors().get(i+1)==p)
+                {
+                    ttable[i][p]=1;
+                }
+            }
+        }
+        
+//        System.out.println("ttable: ");
+//        System.out.print("E/P ");
+//        for(int p=0;p<P;p++) System.out.print(p+ " ");
+//        System.out.println();
+//        for(int i=0;i<E;i++)
+//        {
+//            System.out.print((i+1)+":  ");
+//            for(int p=0;p<P;p++)
+//            {                
+//                System.out.print(ttable[i][p]+" ");                
+//            }
+//            System.out.println();
+//        }   
     }
+    
 }
