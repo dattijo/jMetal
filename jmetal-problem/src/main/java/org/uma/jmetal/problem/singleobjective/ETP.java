@@ -90,17 +90,24 @@ public class ETP extends AbstractIntegerPermutationProblem
     public void evaluate(PermutationSolution<Integer> solution) 
     {
         int fitness=0;
+        int P = exGraphColored.getColoring().getNumberColors();
+        //System.out.println("Fitness = "+fitness+"\nNumber of Periods = "+P);
         
-        for(int i=0; i<=numberOfExams-1;i++)
-        {
-            for(int j=i+1; j<=numberOfExams;j++)
+        for(int i=0; i<numberOfExams-1;i++)
+        {          
+            for(int j=i+1; j<numberOfExams;j++)
             {
-                for(int p=0;p<=exGraphColored.getColoring().getNumberColors();p++)
+                //System.out.println("Exam "+(i+1)+" followed by "+(j+1));
+                for(int p=0;p<P-1;p++)
                 {
-                    fitness+=ttable[i][p]*ttable[j][p]*matrix[i][j];
+                    //System.out.println("Period "+p);
+                    fitness+=ttable[i][p]*ttable[j][p+1]*matrix[i][j];
+//                    System.out.println("Fitness = "+fitness);
                 }
             }
         }
+        
+        //System.out.println("Fitness = "+fitness);
         
         solution.setObjective(0, fitness);
     }
