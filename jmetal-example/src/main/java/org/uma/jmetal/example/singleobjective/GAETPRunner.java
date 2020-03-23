@@ -56,7 +56,7 @@ public class GAETPRunner {
     MutationOperator<PermutationSolution<Integer>> mutation;
     SelectionOperator<List<PermutationSolution<Integer>>, PermutationSolution<Integer>> selection;
 
-    problem = new ETP("C:/Users/PhDLab/Documents/NetBeansProjects/examTimetableDataReader/exam_comp_set00.exam");
+    problem = new ETP("C:/Users/PhDLab/Documents/NetBeansProjects/examTimetableDataReader/exam_comp_set6.exam");
 
     crossover = new PMXCrossover(0.9);
 
