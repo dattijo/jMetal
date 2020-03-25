@@ -56,7 +56,8 @@ public class GAETPRunner {
     MutationOperator<PermutationSolution<Integer>> mutation;
     SelectionOperator<List<PermutationSolution<Integer>>, PermutationSolution<Integer>> selection;
 
-    problem = new ETP("C:/Users/PhDLab/Documents/NetBeansProjects/examTimetableDataReader/exam_comp_set6.exam");
+    
+    problem = new ETP("C:/Users/PhDLab/Documents/NetBeansProjects/examTimetableDataReader/exam_comp_set00.exam");
 
     crossover = new PMXCrossover(0.9);
 
@@ -67,9 +68,9 @@ public class GAETPRunner {
 
     algorithm = new GeneticAlgorithmBuilder<>(problem, crossover, mutation)
             .setPopulationSize(100)
-            .setMaxEvaluations(250000)
+            .setMaxEvaluations(250000)            
             .setSelectionOperator(selection)
-            .build() ;
+            .build() ; 
 
     AlgorithmRunner algorithmRunner = new AlgorithmRunner.Executor(algorithm)
             .execute() ;
@@ -77,6 +78,7 @@ public class GAETPRunner {
     PermutationSolution<Integer> solution = algorithm.getResult() ;
     List<PermutationSolution<Integer>> population = new ArrayList<>(1) ;
     population.add(solution) ;
+//    System.out.println("PopSize: "+population.size());
 
     long computingTime = algorithmRunner.getComputingTime() ;
 
