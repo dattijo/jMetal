@@ -51,7 +51,7 @@ public class ETP extends AbstractIntegerPermutationProblem
 {
     class Exam
     {
-        int examId,examDuration,studentsCount=0;
+        int examId,examDuration,period,studentsCount=0;
         ArrayList<Integer> enrollmentList = new ArrayList<>();
 
         Exam(int id, int duration)
@@ -65,6 +65,11 @@ public class ETP extends AbstractIntegerPermutationProblem
             enrollmentList.add(student);
             studentsCount++;
         }
+        
+        void setPeriod(int p)
+        {
+            period=p;     
+        }
     }
     
     private int numberOfExams;
@@ -72,26 +77,27 @@ public class ETP extends AbstractIntegerPermutationProblem
     private int [][] proximityMatrix;
     private int [][] ttable;
     
-    Map <Integer,List> studentMap = new HashMap<>();
-    ArrayList<Exam> examVector = new ArrayList<>();
+    Map <Integer,List> studentMap;
+    ArrayList<Exam> examVector;
     
-    Graph<Integer, DefaultEdge> exGraph = new SimpleGraph<>(DefaultEdge.class);
-    GreedyColoring exGraphColored = new GreedyColoring(exGraph);
+    Graph<Integer, DefaultEdge> exGraph;
+    GreedyColoring exGraphColored;
     
     
       
     public ETP(String problemFile) throws IOException
     {
-        //examVector = new ArrayList<>();
-        //studentMap = new HashMap<>();
-        //exGraph = new SimpleGraph<>(DefaultEdge.class);
-        //exGraphColored = new GreedyColoring(exGraph);
+        studentMap = new HashMap<>();
+        examVector = new ArrayList<>();
+        
+        exGraph = new SimpleGraph<>(DefaultEdge.class);
+        exGraphColored = new GreedyColoring(exGraph);
         
         conflictMatrix = readProblem(problemFile);
                 
         setNumberOfVariables(numberOfExams);
         setNumberOfObjectives(1);
-        setNumberOfConstraints(1);
+        //setNumberOfConstraints(1);
         setName("ETP");
     }
     
@@ -215,6 +221,7 @@ public class ETP extends AbstractIntegerPermutationProblem
                 }
             }
         }
+        System.out.println();
         return conflictMatrix;
     }
     
@@ -254,13 +261,24 @@ public class ETP extends AbstractIntegerPermutationProblem
                     ttable[i][p]=1;
                 }
             }
-        }        
+        }
+            
+//        System.out.println("TTable: ");
+//        for(int i=0;i<E;i++)
+//        {
+//            for(int p=0;p<P;p++)
+//            {
+//                System.out.print(ttable[i][p]);
+//            }
+//            System.out.println();
+//        }
     }
     
     @Override
     public void evaluate(PermutationSolution<Integer> solution) 
     {
         int fitness=0;
+        double softFitness;
         int P = exGraphColored.getColoring().getNumberColors();
         
         for(int i=0; i<numberOfExams-1;i++)
@@ -272,34 +290,65 @@ public class ETP extends AbstractIntegerPermutationProblem
                     fitness+=ttable[i][p]*ttable[j][p+1]*conflictMatrix[i][j];                                        
                 }
             }
-        }        
-        solution.setObjective(0, fitness);
+        }    
+        softFitness = evaluateConstraints(solution)/studentMap.size();
         
-        this.evaluateConstraints(solution);
+//        System.out.println("TTable");
+//        for(int i=0; i<numberOfExams;i++)
+//        {
+//            for(int p=0;p<P;p++)
+//            {                    
+//                System.out.print(ttable[i][p]);                                    
+//            }
+//            System.out.println();
+//        }
+        
+        solution.setObjective(0, fitness);
+//        solution.setConstraint(0, softFitness);        
     }
-
-    void generateProximityMatrix()
+    
+    public int evaluateConstraints(PermutationSolution<Integer> solution)
     {
         proximityMatrix= new int[numberOfExams][numberOfExams];
+        int P = exGraphColored.getColoring().getNumberColors();
+        int [] examEnrollment = new int[numberOfExams];
+        
         for(int i=0; i<numberOfExams-1;i++)
         {          
-            int p_i =(int) exGraphColored.getColoring().getColors().get(i);
+            examEnrollment[i]=examVector.get(i).studentsCount;
+            int p_i =(int) exGraphColored.getColoring().getColors().get(i+1);
             for(int j=i+1; j<numberOfExams;j++)
             {         
-                int p_j =(int) exGraphColored.getColoring().getColors().get(j);
+                int p_j =(int) exGraphColored.getColoring().getColors().get(j+1);
                 if(conflictMatrix[i][j]!=0)
                 {                    
                     proximityMatrix[i][j]= (int)Math.pow(2,(5 - Math.abs(p_i-p_j)));
-                    System.out.println("Proximity Cost between period " + p_i +" and period "
-                            + p_j+" is : "+proximityMatrix[i][j]);
+                    //System.out.println("Proximity Cost between period " + p_i +" and period "
+                    //        + p_j+" is : "+proximityMatrix[i][j]);
                 }                    
             }
         } 
-    }
-    
-    public void evaluateConstraints(PermutationSolution<Integer> solution)
-    {
-        generateProximityMatrix();
+        boolean seatingViolation=false;
+        for(int i=0; i<numberOfExams-1;i++)
+        {
+            for(int p=0;p<P-1;p++)
+            {
+                if(ttable[i][p]*examEnrollment[i]<S)
+                {
+                    seatingViolation=true;
+                }
+            }
+        }
+//        System.out.println("Proximity Matrix: ");
+//        for(int i=0; i<numberOfExams;i++)
+//        {          
+//            for(int j=0; j<numberOfExams;j++)
+//            {                         
+//                System.out.print(proximityMatrix[i][j]+"  "); 
+//            }
+//            System.out.println();
+//        }
+        
         int violationCount=0;        
         
         for(int i=0; i<numberOfExams-1;i++)
@@ -311,9 +360,10 @@ public class ETP extends AbstractIntegerPermutationProblem
                     violationCount+=proximityMatrix[i][j]*conflictMatrix[i][j];
                 }                    
             }
-        }        
-        solution.setConstraint(0, violationCount);  
-        System.out.println("Constraint = "+violationCount);
+        }
+        return violationCount;
+        //solution.setConstraint(0, violationCount);  
+        //System.out.println("Constraint = "+violationCount);
     }
     
 //    void readPeriods(StreamTokenizer tok, boolean fnd) throws IOException
@@ -454,8 +504,5 @@ public class ETP extends AbstractIntegerPermutationProblem
 //                }
 //                t= tok.nextToken();
 //            }
-//    }
-    
-    
-    
+//    }          
 }
