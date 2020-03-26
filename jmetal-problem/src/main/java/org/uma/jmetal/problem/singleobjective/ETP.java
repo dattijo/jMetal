@@ -65,23 +65,16 @@ public class ETP extends AbstractIntegerPermutationProblem
             enrollmentList.add(student);
             studentsCount++;
         }
-        
-        void setPeriod(int p)
-        {
-            period=p;     
-        }
     }
     
     private int numberOfExams;
     private int [][] conflictMatrix;
-    private int [][] proximityMatrix;
-    private int [][] ttable;
     
     Map <Integer,List> studentMap;
     ArrayList<Exam> examVector;
     
-    Graph<Integer, DefaultEdge> exGraph;
-    GreedyColoring exGraphColored;
+//    Graph<Integer, DefaultEdge> exGraph;
+//    BrownBacktrackColoring exGraphColored;
     
     
       
@@ -90,8 +83,8 @@ public class ETP extends AbstractIntegerPermutationProblem
         studentMap = new HashMap<>();
         examVector = new ArrayList<>();
         
-        exGraph = new SimpleGraph<>(DefaultEdge.class);
-        exGraphColored = new GreedyColoring(exGraph);
+//        exGraph = new SimpleGraph<>(DefaultEdge.class);
+//        exGraphColored = new BrownBacktrackColoring(exGraph);
         
         conflictMatrix = readProblem(problemFile);
                 
@@ -127,9 +120,7 @@ public class ETP extends AbstractIntegerPermutationProblem
         found = false ;
 
         conflictMatrix  = readExams(token,found);
-        createGraph(conflictMatrix);
-        //exGraphColored = new GreedyColoring(exGraph);
-        createTTable();
+//        createGraph(conflictMatrix);  
         
 //        readPeriods(token,found);
 //        readRooms(token,found);
@@ -221,7 +212,6 @@ public class ETP extends AbstractIntegerPermutationProblem
                 }
             }
         }
-        System.out.println();
         return conflictMatrix;
     }
     
@@ -231,140 +221,86 @@ public class ETP extends AbstractIntegerPermutationProblem
         if(line<=numberOfExams)examVector.add(new Exam(line-1,(int)tok.nval));              
     }
     
-    void createGraph(int[][] cMat)
-    {
-        for(int v1=1;v1<=numberOfExams;v1++)
-        {
-            exGraph.addVertex(v1);
-        }
- 
-        for(int v1=1;v1<=numberOfExams;v1++)
-        {
-            for(int v2=1;v2<=numberOfExams;v2++)
-            {
-                if(cMat[v1-1][v2-1]!=0)exGraph.addEdge(v1, v2);
-            }
-        }        
-    }
-    
-    void createTTable()
-    {
-        int E = numberOfExams;
-        int P = exGraphColored.getColoring().getNumberColors();
-        ttable = new int[E][P];
-        for(int i=0;i<E;i++)
-        {
-            for(int p=0;p<P;p++)
-            {
-                if ((int)exGraphColored.getColoring().getColors().get(i+1)==p)
-                {
-                    ttable[i][p]=1;
-                }
-            }
-        }
-            
-//        System.out.println("TTable: ");
-//        for(int i=0;i<E;i++)
+//    void createGraph(int[][] cMat)
+//    {
+//        for(int v1=1;v1<=numberOfExams;v1++)
 //        {
-//            for(int p=0;p<P;p++)
-//            {
-//                System.out.print(ttable[i][p]);
-//            }
-//            System.out.println();
+//            exGraph.addVertex(v1);
 //        }
+// 
+//        for(int v1=1;v1<=numberOfExams;v1++)
+//        {
+//            for(int v2=1;v2<=numberOfExams;v2++)
+//            {
+//                if(cMat[v1-1][v2-1]!=0)exGraph.addEdge(v1, v2);
+//            }
+//        }        
+//    } 
+
+    public void createSolution(PermutationSolution<Integer> solution)
+    {
+    
     }
     
     @Override
     public void evaluate(PermutationSolution<Integer> solution) 
     {
-        int fitness=0;
-        double softFitness;
-        int P = exGraphColored.getColoring().getNumberColors();
+        double fitness=0;                 
         
         for(int i=0; i<numberOfExams-1;i++)
-        {          
+        {                      
             for(int j=i+1; j<numberOfExams;j++)
             {
-                for(int p=0;p<P-1;p++)
-                {                    
-                    fitness+=ttable[i][p]*ttable[j][p+1]*conflictMatrix[i][j];                                        
-                }
-            }
-        }    
-        softFitness = evaluateConstraints(solution)/studentMap.size();
-        
-//        System.out.println("TTable");
-//        for(int i=0; i<numberOfExams;i++)
-//        {
-//            for(int p=0;p<P;p++)
-//            {                    
-//                System.out.print(ttable[i][p]);                                    
-//            }
-//            System.out.println();
-//        }
-        
-        solution.setObjective(0, fitness);
-//        solution.setConstraint(0, softFitness);        
+                int x = solution.getVariable(i);
+                int y = solution.getVariable(j);
+                int prox = (int)Math.pow(2,(5 - Math.abs(i-j)));
+                fitness+=prox*conflictMatrix[x][y];
+            }                                                       
+        }        
+
+        fitness = fitness/studentMap.size();
+        solution.setObjective(0, fitness);     
     }
     
-    public int evaluateConstraints(PermutationSolution<Integer> solution)
-    {
-        proximityMatrix= new int[numberOfExams][numberOfExams];
-        int P = exGraphColored.getColoring().getNumberColors();
-        int [] examEnrollment = new int[numberOfExams];
-        
-        for(int i=0; i<numberOfExams-1;i++)
-        {          
-            examEnrollment[i]=examVector.get(i).studentsCount;
-            int p_i =(int) exGraphColored.getColoring().getColors().get(i+1);
-            for(int j=i+1; j<numberOfExams;j++)
-            {         
-                int p_j =(int) exGraphColored.getColoring().getColors().get(j+1);
-                if(conflictMatrix[i][j]!=0)
-                {                    
-                    proximityMatrix[i][j]= (int)Math.pow(2,(5 - Math.abs(p_i-p_j)));
-                    //System.out.println("Proximity Cost between period " + p_i +" and period "
-                    //        + p_j+" is : "+proximityMatrix[i][j]);
-                }                    
-            }
-        } 
-        boolean seatingViolation=false;
-        for(int i=0; i<numberOfExams-1;i++)
-        {
-            for(int p=0;p<P-1;p++)
-            {
-                if(ttable[i][p]*examEnrollment[i]<S)
-                {
-                    seatingViolation=true;
-                }
-            }
-        }
-//        System.out.println("Proximity Matrix: ");
-//        for(int i=0; i<numberOfExams;i++)
+//    public boolean evaluateConstraints(PermutationSolution<Integer> solution)
+//    {        
+////        int clash=0;
+//        int P = solution.getNumberOfVariables();
+//        
+//        for(int i=0; i<numberOfExams-1;i++)
 //        {          
-//            for(int j=0; j<numberOfExams;j++)
-//            {                         
-//                System.out.print(proximityMatrix[i][j]+"  "); 
+//            for(int j=0; j<numberOfExams-1;j++)
+//            {
+//                int x = solution.getVariable(i);
+//                int y = solution.getVariable(j);
+//                for(int p=0;p<P-1;p++)
+//                {                    
+//                    if(*conflictMatrix[x][y])
+//                    return false;
+//                }
 //            }
-//            System.out.println();
+//        } 
+//        
+//        
+//        boolean seatingViolation=false;
+//        for(int i=0; i<numberOfExams-1;i++)
+//        {
+//            for(int p=0;p<P-1;p++)
+//            {
+//                if(ttable[i][p]*examEnrollment[i]<S)
+//                {
+//                    seatingViolation=true;
+//                }
+//            }
 //        }
-        
-        int violationCount=0;        
-        
-        for(int i=0; i<numberOfExams-1;i++)
-        {          
-            for(int j=i+1; j<numberOfExams;j++)
-            {         
-                if(conflictMatrix[i][j]!=0)
-                {
-                    violationCount+=proximityMatrix[i][j]*conflictMatrix[i][j];
-                }                    
-            }
-        }
-        return violationCount;
-        //solution.setConstraint(0, violationCount);  
-        //System.out.println("Constraint = "+violationCount);
-    }
+//
+//        
+//        
+//        solution.setConstraint(0, violationCount);  
+//        System.out.println("Constraint = "+violationCount);
+//        return clash;
+//    }
+    
     
 //    void readPeriods(StreamTokenizer tok, boolean fnd) throws IOException
 //    {
