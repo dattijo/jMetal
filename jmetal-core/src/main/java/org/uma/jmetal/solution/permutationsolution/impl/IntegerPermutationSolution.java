@@ -21,6 +21,7 @@ public class IntegerPermutationSolution extends AbstractSolution<Integer>
   /** Constructor */
   public IntegerPermutationSolution(int permutationLength, int numberOfObjectives) {
     super(permutationLength, numberOfObjectives);
+    
 
     List<Integer> randomSequence = new ArrayList<>(permutationLength);
 
@@ -38,7 +39,7 @@ public class IntegerPermutationSolution extends AbstractSolution<Integer>
   /** Copy Constructor */
   public IntegerPermutationSolution(IntegerPermutationSolution solution) {
     super(solution.getLength(), solution.getNumberOfObjectives());
-
+    //System.out.println("NOT Creating RandomPermuation Solution");
     for (int i = 0; i < getNumberOfObjectives(); i++) {
       setObjective(i, solution.getObjective(i));
     }
