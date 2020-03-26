@@ -57,8 +57,8 @@ public class GAETPRunner {
     SelectionOperator<List<PermutationSolution<Integer>>, PermutationSolution<Integer>> selection;
 
     
-    problem = new ETP("C:/Users/PhDLab/Documents/NetBeansProjects/examTimetableDataReader/exam_comp_set00.exam");
-
+    problem = new ETP("C:/Users/PhDLab/Documents/NetBeansProjects/examTimetableDataReader/exam_comp_set44.exam");
+    //problem.createSolution();
     crossover = new PMXCrossover(0.9);
 
     double mutationProbability = 1.0 / problem.getNumberOfVariables() ;
@@ -74,8 +74,9 @@ public class GAETPRunner {
 
     AlgorithmRunner algorithmRunner = new AlgorithmRunner.Executor(algorithm)
             .execute() ;
-
+    
     PermutationSolution<Integer> solution = algorithm.getResult() ;
+    
     List<PermutationSolution<Integer>> population = new ArrayList<>(1) ;
     population.add(solution) ;
 //    System.out.println("PopSize: "+population.size());
