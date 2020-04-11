@@ -29,14 +29,18 @@ import org.uma.jmetal.algorithm.Algorithm;
 import org.uma.jmetal.algorithm.singleobjective.geneticalgorithm.GeneticAlgorithmBuilder;
 import org.uma.jmetal.example.AlgorithmRunner;
 import org.uma.jmetal.operator.crossover.CrossoverOperator;
+import org.uma.jmetal.operator.crossover.impl.NullCrossover;
 import org.uma.jmetal.operator.crossover.impl.PMXCrossover;
 import org.uma.jmetal.operator.mutation.MutationOperator;
+import org.uma.jmetal.operator.mutation.impl.KempeChainInterchange;
+import org.uma.jmetal.operator.mutation.impl.NullMutation;
 import org.uma.jmetal.operator.mutation.impl.PermutationSwapMutation;
+import org.uma.jmetal.operator.mutation.impl.TimeslotSwapMutation;
 import org.uma.jmetal.operator.selection.SelectionOperator;
 import org.uma.jmetal.operator.selection.impl.BinaryTournamentSelection;
-import org.uma.jmetal.problem.permutationproblem.PermutationProblem;
+import org.uma.jmetal.problem.integermatrixproblem.IntegerMatrixProblem;
 import org.uma.jmetal.problem.singleobjective.ETP;
-import org.uma.jmetal.solution.permutationsolution.PermutationSolution;
+import org.uma.jmetal.solution.integermatrixsolution.IntegerMatrixSolution;
 import org.uma.jmetal.util.JMetalLogger;
 import org.uma.jmetal.util.comparator.RankingAndCrowdingDistanceComparator;
 import org.uma.jmetal.util.fileoutput.SolutionListOutput;
@@ -50,36 +54,38 @@ public class GAETPRunner {
     
 
   public static void main(String[] args) throws Exception {
-    PermutationProblem<PermutationSolution<Integer>> problem;
-    Algorithm<PermutationSolution<Integer>> algorithm;
-    CrossoverOperator<PermutationSolution<Integer>> crossover;
-    MutationOperator<PermutationSolution<Integer>> mutation;
-    SelectionOperator<List<PermutationSolution<Integer>>, PermutationSolution<Integer>> selection;
+//    PermutationProblem<PermutationSolution<Integer>> problem;
+    IntegerMatrixProblem problem;
+    Algorithm<IntegerMatrixSolution<Integer>> algorithm;
+    CrossoverOperator<IntegerMatrixSolution<Integer>> crossover;
+    MutationOperator<IntegerMatrixSolution<Integer>> mutation;
+    SelectionOperator<List<IntegerMatrixSolution<Integer>>, IntegerMatrixSolution<Integer>> selection;
 
     
-    problem = new ETP("C:/Users/PhDLab/Documents/NetBeansProjects/examTimetableDataReader/exam_comp_set44.exam");
-    //problem.createSolution();
-    crossover = new PMXCrossover(0.9);
+    problem = new ETP("C:/Users/PhDLab/Documents/NetBeansProjects/examTimetableDataReader/exam_comp_set00.exam");
+    
+    crossover = new NullCrossover();    //crossover = new PMXCrossover(0.9);
 
-    double mutationProbability = 1.0 / problem.getNumberOfVariables() ;
-    mutation = new PermutationSwapMutation<Integer>(mutationProbability) ;
+    double mutationProbability = 0.9 ;    //double mutationProbability = 1.0 / problem.getNumberOfVariables() ;
+//    mutation = new PermutationSwapMutation<Integer>(mutationProbability) ; 
+//    mutation = new NullMutation();
+    mutation = new KempeChainInterchange(mutationProbability);
 
-    selection = new BinaryTournamentSelection<PermutationSolution<Integer>>(new RankingAndCrowdingDistanceComparator<PermutationSolution<Integer>>());
-
+    selection = new BinaryTournamentSelection<IntegerMatrixSolution<Integer>>(new RankingAndCrowdingDistanceComparator<IntegerMatrixSolution<Integer>>());
+    
     algorithm = new GeneticAlgorithmBuilder<>(problem, crossover, mutation)
-            .setPopulationSize(100)
-            .setMaxEvaluations(250000)            
+            .setPopulationSize(100)   //.setPopulationSize(100)
+            .setMaxEvaluations(250000) //.setMaxEvaluations(250000) 
             .setSelectionOperator(selection)
             .build() ; 
 
     AlgorithmRunner algorithmRunner = new AlgorithmRunner.Executor(algorithm)
             .execute() ;
     
-    PermutationSolution<Integer> solution = algorithm.getResult() ;
+    IntegerMatrixSolution<Integer> solution = algorithm.getResult() ;
     
-    List<PermutationSolution<Integer>> population = new ArrayList<>(1) ;
+    List<IntegerMatrixSolution<Integer>> population = new ArrayList<>(1) ;
     population.add(solution) ;
-//    System.out.println("PopSize: "+population.size());
 
     long computingTime = algorithmRunner.getComputingTime() ;
 
