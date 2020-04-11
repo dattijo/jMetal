@@ -3,6 +3,7 @@ package org.uma.jmetal.solution.permutationsolution.impl;
 import org.uma.jmetal.solution.AbstractSolution;
 import org.uma.jmetal.solution.permutationsolution.PermutationSolution;
 
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -20,8 +21,8 @@ public class IntegerPermutationSolution extends AbstractSolution<Integer>
 
   /** Constructor */
   public IntegerPermutationSolution(int permutationLength, int numberOfObjectives) {
-    super(permutationLength, numberOfObjectives);
-    
+    super(permutationLength, numberOfObjectives); 
+
 
     List<Integer> randomSequence = new ArrayList<>(permutationLength);
 
@@ -30,16 +31,15 @@ public class IntegerPermutationSolution extends AbstractSolution<Integer>
     }
 
     java.util.Collections.shuffle(randomSequence);
-
+    
     for (int i = 0; i < permutationLength; i++) {
-      setVariable(i, randomSequence.get(i));
+      setVariable(i, randomSequence.get(i));           
     }
   }
 
   /** Copy Constructor */
   public IntegerPermutationSolution(IntegerPermutationSolution solution) {
     super(solution.getLength(), solution.getNumberOfObjectives());
-    //System.out.println("NOT Creating RandomPermuation Solution");
     for (int i = 0; i < getNumberOfObjectives(); i++) {
       setObjective(i, solution.getObjective(i));
     }

@@ -141,7 +141,7 @@ public class PMXCrossover implements
         while (m2 != -1) {
           n2 = m2;
           m2 = replacement2[m2];
-        }
+        } 
 
         offspring.get(0).setVariable(i, n1);
         offspring.get(1).setVariable(i, n2);

@@ -62,7 +62,7 @@ public abstract class AbstractGeneticAlgorithm<S, Result> extends AbstractEvolut
     }
     return population;
   }
-
+  
   /**
    * This method iteratively applies a {@link SelectionOperator} to the population to fill the mating pool population.
    *

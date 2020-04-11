@@ -1,50 +1,54 @@
 package org.uma.jmetal.operator.mutation.impl;
 
+import java.util.ArrayList;
 import org.uma.jmetal.operator.mutation.MutationOperator;
-import org.uma.jmetal.solution.permutationsolution.PermutationSolution;
+import org.uma.jmetal.solution.integermatrixsolution.IntegerMatrixSolution;
+//import org.uma.jmetal.solution.permutationsolution.PermutationSolution;
 import org.uma.jmetal.util.checking.Check;
 import org.uma.jmetal.util.pseudorandom.BoundedRandomGenerator;
 import org.uma.jmetal.util.pseudorandom.JMetalRandom;
 import org.uma.jmetal.util.pseudorandom.RandomGenerator;
 
 /**
- * This class implements a swap mutation. The solution type of the solution must be Permutation.
+ * This class implements a timeslot swap mutation. The solution type of the solution must be IntegerMatrix.
  *
  * @author Antonio J. Nebro <antonio@lcc.uma.es>
  * @author Juan J. Durillo
  */
 @SuppressWarnings("serial")
-public class PermutationSwapMutation<T> implements MutationOperator<PermutationSolution<T>> {
+public class TimeslotSwapMutation<T> implements MutationOperator<IntegerMatrixSolution<T>> {
   private double mutationProbability;
   private RandomGenerator<Double> mutationRandomGenerator;
   private BoundedRandomGenerator<Integer> positionRandomGenerator;
+  private int[][] conflictMatrix;
 
   /** Constructor */
-  public PermutationSwapMutation(double mutationProbability) {
+  public TimeslotSwapMutation(double mutationProbability, int[][] conMat) {
     this(
         mutationProbability,
         () -> JMetalRandom.getInstance().nextDouble(),
-        (a, b) -> JMetalRandom.getInstance().nextInt(a, b));
+        (a, b) -> JMetalRandom.getInstance().nextInt(a, b),conMat);
   }
 
   /** Constructor */
-  public PermutationSwapMutation(
-      double mutationProbability, RandomGenerator<Double> randomGenerator) {
+  public TimeslotSwapMutation(
+      double mutationProbability, RandomGenerator<Double> randomGenerator,int [][] conMat) {
     this(
         mutationProbability,
         randomGenerator,
-        BoundedRandomGenerator.fromDoubleToInteger(randomGenerator));
+        BoundedRandomGenerator.fromDoubleToInteger(randomGenerator),conMat);
   }
 
   /** Constructor */
-  public PermutationSwapMutation(
+  public TimeslotSwapMutation(
       double mutationProbability,
       RandomGenerator<Double> mutationRandomGenerator,
-      BoundedRandomGenerator<Integer> positionRandomGenerator) {
+      BoundedRandomGenerator<Integer> positionRandomGenerator, int[][]conMat) {
     Check.probabilityIsValid(mutationProbability);
     this.mutationProbability = mutationProbability;
     this.mutationRandomGenerator = mutationRandomGenerator;
     this.positionRandomGenerator = positionRandomGenerator;
+    this.conflictMatrix = conMat;
   }
 
   /* Getters */
@@ -60,16 +64,17 @@ public class PermutationSwapMutation<T> implements MutationOperator<PermutationS
 
   /* Execute() method */
   @Override
-  public PermutationSolution<T> execute(PermutationSolution<T> solution) {
+  public IntegerMatrixSolution<T> execute(IntegerMatrixSolution<T> solution) {
     Check.isNotNull(solution);
-
     doMutation(solution);
+     
     return solution;
   }
 
   /** Performs the operation */
-  public void doMutation(PermutationSolution<T> solution) {
-    int permutationLength;
+  public void doMutation(IntegerMatrixSolution<T> solution) {
+     
+      int permutationLength;
     permutationLength = solution.getNumberOfVariables();
 
     if ((permutationLength != 0) && (permutationLength != 1)) {
