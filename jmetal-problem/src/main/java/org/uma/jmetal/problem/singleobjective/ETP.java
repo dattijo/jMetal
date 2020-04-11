@@ -1,26 +1,3 @@
-/*
- * The MIT License
- *
- * Copyright 2020 PhDLab.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
 package org.uma.jmetal.problem.singleobjective;
 
 import java.io.BufferedReader;
@@ -29,79 +6,206 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StreamTokenizer;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import org.jgrapht.Graph;
-
 import org.jgrapht.alg.color.*;
+import org.jgrapht.alg.interfaces.VertexColoringAlgorithm.Coloring;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 
-import org.uma.jmetal.problem.permutationproblem.impl.AbstractIntegerPermutationProblem;
-import org.uma.jmetal.solution.permutationsolution.PermutationSolution;
+import org.uma.jmetal.problem.integermatrixproblem.impl.AbstractIntegerMatrixProblem;
+import org.uma.jmetal.solution.integermatrixsolution.IntegerMatrixSolution;
+import org.uma.jmetal.solution.integermatrixsolution.impl.DefaultIntegerMatrixSolution;
 
 /**
  *
- * @author PhDLab
+ * @author aadatti
  */
-public class ETP extends AbstractIntegerPermutationProblem
+public class ETP extends AbstractIntegerMatrixProblem        
 {
+    NumberFormat formatter = new DecimalFormat("#0000.0000");     
+    
+    Map<Integer,Student> studentMap;
+    ArrayList<Exam> examVector;
+    ArrayList<TimeSlot> timeslotVector;
+    ArrayList<Room> roomVector;
+    ArrayList<Faculty> facultyVector;
+    ArrayList<Campus> campusVector;
+    ArrayList<ArrayList<Integer>> timetableSolution;
+    
+    int numberOfExams;
+    int numberOfTimeSlots;    
+    int numberOfCampuses;
+    int numberOfFaculties;
+    int numberOfRooms;
+    int overallRoomCapacity;
+
+    private int examDuration;
+    
+    int [][] conflictMatrix;
+    double [][] roomToRoomDistanceMatrix;  
+    
+    Graph<Integer, DefaultEdge> exGraph;
+    Coloring coloredGraph;
+    
+    Random rand = new Random();
+    
+    class Student
+    {
+        int sId;
+        ArrayList<Exam> examList = new ArrayList<>();
+        
+        Student(int id)
+        {
+            sId = id;
+        }
+        
+        void addExam(Exam e)
+        {
+            examList.add(e);
+        }
+    }
+    
     class Exam
     {
-        int examId,examDuration,period,studentsCount=0;
-        ArrayList<Integer> enrollmentList = new ArrayList<>();
-
+        int examId,examDuration,studentsCount=0;
+        TimeSlot timeslot;
+        Room room;
+        ArrayList<Student> enrollmentList = new ArrayList<>();
+        
         Exam(int id, int duration)
         {
             examId=id;
             examDuration=duration;
         }
 
-        void addStudent(Integer student)
+        void addStudent(Student student)
         {
             enrollmentList.add(student);
             studentsCount++;
         }
+        
+        void setTimeSlot(TimeSlot tSlot)
+        {
+            timeslot = tSlot;
+        }
+        
+        void setRoom(Room rm)
+        {
+            room =rm;
+        }
     }
     
-    private int numberOfExams;
-    private int [][] conflictMatrix;
+    class Room
+    {
+        int capacity, roomId,  distToFaculty;
+        Faculty myFaculty;
+        List<Exam> examList = new ArrayList<>();
+        
+        Room(int cap, int rId, int fId, int dToF)
+        {
+            capacity = cap;
+            roomId = rId;
+            myFaculty = facultyVector.get(fId-1);
+            distToFaculty = dToF;
+        }
+        
+        void allocateExam(Exam exam)
+        {
+            examList.add(exam);
+        }
+        
+        Faculty getFaculty()
+        {
+            return myFaculty;
+        }               
+    }
     
-    Map <Integer,List> studentMap;
-    ArrayList<Exam> examVector;
+    class Faculty
+    {
+        int facId,  distToCampus;
+        double longitude, latitude;
+        Campus myCampus;
+        
+        Faculty(int fId, int cId, double lon, double lat, int dToC)
+        {
+//            campId = cId;
+            myCampus = campusVector.get(cId-1);
+            facId = fId;
+            longitude = lon;
+            latitude = lat;
+            distToCampus = dToC;
+        }
+        
+        Campus getCampus()
+        {
+//            int i=0;
+//            while(campusVector.get(i).campId!=campId)i++;
+//            System.out.println("campId found: "+campusVector.get(i).campId);
+            return myCampus;
+        }
+    }
     
-//    Graph<Integer, DefaultEdge> exGraph;
-//    BrownBacktrackColoring exGraphColored;
+    class Campus
+    {
+        int campId;
+        double longitude, latitude;
+        Campus(int cId,double lon, double lat)
+        {
+            campId=cId;
+            longitude=lon;
+            latitude=lat;
+        }
+    }
     
+    class TimeSlot
+    {
+        int id,day,pos,duration;
+        TimeSlot(int i,int d, int t, int dur)
+        {
+            id = i;
+            day = d;
+            pos = t;
+            duration = dur;
+        }
+    }
     
-      
     public ETP(String problemFile) throws IOException
     {
+        overallRoomCapacity=0;
+        
         studentMap = new HashMap<>();
         examVector = new ArrayList<>();
-        
-//        exGraph = new SimpleGraph<>(DefaultEdge.class);
-//        exGraphColored = new BrownBacktrackColoring(exGraph);
-        
+        timeslotVector = new ArrayList();
+        roomVector = new ArrayList();
+        facultyVector = new ArrayList();
+        campusVector = new ArrayList();
+        timetableSolution = new ArrayList<ArrayList<Integer>>(); 
+         
         conflictMatrix = readProblem(problemFile);
-                
+        
+        roomToRoomDistanceMatrix = new double[numberOfRooms][numberOfRooms];
+        
+        generateDistanceMatrices();
+        
+        exGraph = new SimpleGraph<>(DefaultEdge.class); 
+        createGraph(conflictMatrix);          
+        
         setNumberOfVariables(numberOfExams);
-        setNumberOfObjectives(1);
+        setNumberOfObjectives(1);        
         //setNumberOfConstraints(1);
         setName("ETP");
     }
     
-    
-    
-    @Override
-    public int getLength() 
-    {
-        return numberOfExams;
-    }
-
     private int[][] readProblem(String file) throws IOException
     {
         InputStream in = getClass().getResourceAsStream(file);
@@ -119,11 +223,12 @@ public class ETP extends AbstractIntegerPermutationProblem
         boolean found ;
         found = false ;
 
-        conflictMatrix  = readExams(token,found);
-//        createGraph(conflictMatrix);  
+        conflictMatrix  = readExams(token,found);        
         
-//        readPeriods(token,found);
-//        readRooms(token,found);
+        readTimeSlots(token,found);
+        readCampuses(token,found);
+        readFaculties(token,found);
+        readRooms(token,found);
 //        readConstraints(token,found);
 //        readWeightings(token,found);                
         
@@ -158,7 +263,7 @@ public class ETP extends AbstractIntegerPermutationProblem
             {
                 tok.nextToken();
                 tok.nextToken();
-//                numberOfPeriods=(int)tok.nval;
+                numberOfTimeSlots=(int)tok.nval;
                 fnd = true ;
             }                
             else
@@ -171,37 +276,47 @@ public class ETP extends AbstractIntegerPermutationProblem
                         tok.nextToken(); 
                         addExam(tok);                        
                         break;
-                    case StreamTokenizer.TT_NUMBER: 
-                        
-                        Integer currentStudent = (int)tok.nval;                 
-                        examVector.get(tok.lineno()-2).addStudent(currentStudent);
-
+                    case StreamTokenizer.TT_NUMBER:                         
+                        int currentStudent = (int)tok.nval;                                               
                         if(!studentMap.containsKey(currentStudent))
                         {                            
-                            List <Integer> examList = new ArrayList();
-                            studentMap.put(currentStudent, examList);                            
+                            studentMap.put(currentStudent, new Student(currentStudent));
                         }
-                        studentMap.get(currentStudent).add(tok.lineno()-1);
+                        examVector.get(tok.lineno()-2).addStudent(studentMap.get(currentStudent));
+                        studentMap.get(currentStudent).examList.add(new Exam(tok.lineno()-1,examDuration));
                         break;
                 }                
             }
-        }       
+        } 
         
-        conflictMatrix= new int[numberOfExams][numberOfExams];
+        //Print Student Map
+//        for(Map.Entry<Integer,Student> entry : studentMap.entrySet())            
+//        {
+//            System.out.print("Student " + entry.getKey()+" Exams: ");
+//            for(int i =0;i<entry.getValue().examList.size();i++)
+//            {
+//                System.out.print(entry.getValue().examList.get(i).examId+" ");
+//            }
+//            System.out.println();
+//        }
+        
+        conflictMatrix= new int[numberOfExams][numberOfExams];                
+        
         //Generate Conflict Matrix
-        ArrayList cleared = new ArrayList();        
+        ArrayList<Student> cleared = new ArrayList();        
         for(int currExam=0; currExam<=examVector.size()-2;currExam++)
-        {                        
-            int student;
+        {         
             cleared.clear();
-            for(int currStudent=0; currStudent<=examVector.get(currExam).enrollmentList.size()-1;currStudent++)
-            {
-                student = examVector.get(currExam).enrollmentList.get(currStudent);
+            int studentCount = examVector.get(currExam).enrollmentList.size();
+            for(int currStudent=1; currStudent<=studentCount; currStudent++)
+            {             
+                Student student = examVector.get(currExam).enrollmentList.get(currStudent-1);               
                 if(cleared.contains(student))continue;
+
                 cleared.add(student);
-                
+
                 for(int nextExam=currExam+1;nextExam<=examVector.size()-1;nextExam++)
-                {                   
+                {                 
                     if(examVector.get(nextExam).enrollmentList.contains(student))
                     {
                         int conflictCount = conflictMatrix[currExam][nextExam];                        
@@ -212,58 +327,556 @@ public class ETP extends AbstractIntegerPermutationProblem
                 }
             }
         }
+        
+            //int Matrix ConflictMatrix
+//        System.out.println("\nDISPLAYING int[][] Matrix CONFLICT MARIX:\n");
+//        for(int i=0;i<numberOfExams;i++)
+//        {
+//            for(int j=0;j<numberOfExams;j++)
+//            {
+//                System.out.print(conflictMatrix[i][j]+", ");
+//            }
+//            System.out.println();
+//        }
+        
         return conflictMatrix;
+    }
+    
+    void createGraph(int[][] cMat)
+    {
+        for(int v1=1;v1<=numberOfExams;v1++)
+        {
+            exGraph.addVertex(v1);
+        }
+ 
+        for(int v1=1;v1<=numberOfExams;v1++)
+        {
+            for(int v2=1;v2<=numberOfExams;v2++)
+            {
+                if(cMat[v1-1][v2-1]!=0)exGraph.addEdge(v1, v2);
+            }
+        }  
+        
+        
+    }            
+    
+    void readTimeSlots(StreamTokenizer tok, boolean fnd) throws IOException
+    {
+        //Read TimeSlots
+        System.out.println("Number of TimeSlots = "+numberOfTimeSlots);
+        fnd=false;
+        int t,pCount=0;
+        int day,pos,duration;
+        day=pos=duration=0;
+        while(!fnd) 
+        {
+            if ((tok.sval != null) && ((tok.sval.compareTo("Campuses") == 0)))
+            {
+                tok.nextToken();
+                tok.nextToken();                
+                numberOfCampuses=(int)tok.nval;
+                System.out.println("Finished Reading TimeSlots.");
+                fnd = true ;
+            }                
+            else
+            {                                                   
+                t = tok.nextToken();
+                switch(t)
+                {
+                    case StreamTokenizer.TT_EOL: 
+                        break;
+                    case StreamTokenizer.TT_NUMBER:
+                        day = (int)tok.nval;tok.nextToken();tok.nextToken();
+                        pos = (int)tok.nval;tok.nextToken();tok.nextToken();
+                        duration = (int)tok.nval;tok.nextToken(); 
+                        addTimeSlot(++pCount,day,pos,duration);
+                        break;
+                }
+            }
+        }
+        
+//        System.out.println("Timeslots Vector");
+//        for(int i=0; i<timeslotVector.size();i++)
+//        {
+//            System.out.print("Timeslot "+timeslotVector.get(i).id);
+//            System.out.print(" in day "+timeslotVector.get(i).day);
+//            System.out.print(" at position "+timeslotVector.get(i).pos);
+//            System.out.println(" has "+timeslotVector.get(i).duration+" minutes");
+//        }
+    }    
+    
+    void readCampuses(StreamTokenizer tok, boolean fnd) throws IOException
+    {
+        //Read Campuses
+        System.out.println("Number of Campuses = "+numberOfCampuses);
+        int t=0,cCount=0;
+        fnd=false;
+        double lon=0.0,lat=0.0;
+        while(!fnd) 
+        {
+            if ((tok.sval != null) && ((tok.sval.compareTo("Faculties") == 0)))
+            {
+                tok.nextToken();
+                tok.nextToken();              
+                numberOfFaculties=(int)tok.nval;
+                System.out.println("Finished Reading Campuses.");
+                fnd = true ;
+            }
+            else
+            {                                                   
+                t = tok.nextToken();
+                switch(t)
+                {
+                    case StreamTokenizer.TT_EOL:                     
+                        break;
+                    case StreamTokenizer.TT_NUMBER:
+                        lon = tok.nval;tok.nextToken();tok.nextToken();
+                        lat = tok.nval;tok.nextToken();
+                        System.out.println("Long: "+lon+"\nLat: "+lat);
+                        addCampus(++cCount,lon,lat);
+                        break;
+                }
+            }
+        }
+//        campusVector = new ArrayList(numberOfCampuses);
+    }
+    
+    void readFaculties(StreamTokenizer tok, boolean fnd) throws IOException
+    {
+        //Read Faculties
+        System.out.println("Number of Faculties = "+numberOfFaculties);
+        fnd=false;
+        int t,camp=0,dToCamp=0,fCount=0;
+        double lon=0.0,lat=0.0;
+        while(!fnd) 
+        {
+            if ((tok.sval != null) && ((tok.sval.compareTo("Rooms") == 0)))
+            {
+                tok.nextToken();
+                tok.nextToken();
+                
+                numberOfRooms=(int)tok.nval;
+                System.out.println("Finished Reading Facuties.");
+                fnd = true ;
+            }                
+            else
+            {                                                   
+                t = tok.nextToken();
+                switch(t)
+                {
+                    case StreamTokenizer.TT_EOL:                     
+                        break;
+                    case StreamTokenizer.TT_NUMBER:
+                        camp = (int)tok.nval;tok.nextToken();tok.nextToken();
+                        dToCamp = (int)tok.nval;tok.nextToken();tok.nextToken();
+                        lon = tok.nval;tok.nextToken();tok.nextToken();
+                        lat = tok.nval;tok.nextToken();
+                        addFaculty(++fCount,camp,lon,lat,dToCamp);
+                        break;
+                }
+            }
+        }
+        
+//        System.out.println("Faculties Vector");
+//        for(int i=0; i<facultyVector.size();i++)
+//        {
+//            System.out.print("Faculty "+facultyVector.get(i).facId);
+//            System.out.print(" in campus "+facultyVector.get(i).campId+" is ");
+//            System.out.print(" at longitude "+facultyVector.get(i).longitude);
+//            System.out.print(" and latitude "+facultyVector.get(i).latitude+" is ");
+//            System.out.println(facultyVector.get(i).distToCampus+"m from main entrance.");         
+//        }
+    }
+    
+    void readRooms(StreamTokenizer tok, boolean fnd) throws IOException
+    {
+        //Read Rooms
+        System.out.println("Number of Rooms = "+numberOfRooms);
+        fnd=false;
+        int t,rCount=0,cap,fac,dToFac;
+        while(!fnd) 
+        {
+            if ((tok.sval != null) && ((tok.sval.compareTo("PeriodHardConstraints") == 0)))
+            {
+                tok.nextToken();
+                tok.nextToken();                
+                System.out.println("Finished Reading Rooms.");
+                fnd = true ;
+            }                
+            else
+            {                                                   
+                t = tok.nextToken();
+                switch(t)
+                {
+                    case StreamTokenizer.TT_EOL:                      
+                        break;
+                    case StreamTokenizer.TT_NUMBER:
+                        cap = (int)tok.nval;tok.nextToken();tok.nextToken();
+                        fac = (int)tok.nval;tok.nextToken();tok.nextToken();
+                        dToFac = (int)tok.nval;tok.nextToken(); 
+                        addRoom(cap,++rCount,fac,dToFac);
+                        break;
+                }
+            }
+        }
+        
+        System.out.println("Room Vector");
+        for(int i=0; i<roomVector.size();i++)
+        {
+            System.out.print("Room "+roomVector.get(i).roomId);
+            System.out.print(" in faculty "+roomVector.get(i).myFaculty.facId);
+            System.out.print(" has capacity "+roomVector.get(i).capacity);
+            System.out.println(" and is "+roomVector.get(i).distToFaculty+"m from main faculty entrance.");         
+        }
+    }
+    
+     void readConstraints(StreamTokenizer tok, boolean fnd) throws IOException
+    {
+//        //Read PeriodHardConstraints
+//        fnd=false;int t;
+//        while(!fnd) 
+//        {
+//            if ((tok.sval != null) && ((tok.sval.compareTo("RoomHardConstraints") == 0)))
+//            {
+//                tok.nextToken();
+//                tok.nextToken();
+////                numberOfRooms=(int)tok.nval;
+////                System.out.println("Finished Reading PeriodHardConstraints.");
+//                fnd = true ;
+//            }                
+//            else
+//            {                                                   
+//                t = tok.nextToken();
+//                switch(t)
+//                {
+//                    case StreamTokenizer.TT_EOL:
+//                        break;
+//                    case StreamTokenizer.TT_NUMBER:                    
+////                        System.out.println("nextToken():"+tok.nval);
+//                        break;
+//                    case StreamTokenizer.TT_WORD:
+////                        System.out.println("nextToken():"+tok.sval);
+//                        break;
+//                }
+//            }
+//        }
+
+//        //Read RoomHardConstraints
+//        fnd=false;
+//        while(!fnd) 
+//        {
+//            if ((tok.sval != null) && ((tok.sval.compareTo("InstitutionalWeightings") == 0)))
+//            {
+//                tok.nextToken();
+//                tok.nextToken();
+//                numberOfRooms=(int)tok.nval;
+////                System.out.println("Finished Reading RoomHardConstraints.");
+//                fnd = true ;
+//            }                
+//            else
+//            {                                                   
+//                t = tok.nextToken();
+//                switch(t)
+//                {
+//                    case StreamTokenizer.TT_EOL:
+//                        break;
+//                    case StreamTokenizer.TT_NUMBER:                    
+////                        System.out.println("nextToken():"+tok.nval);
+//                        break;
+//                    case StreamTokenizer.TT_WORD:
+////                        System.out.println("nextToken():"+tok.sval);
+//                        break;
+//                }
+//            }
+//        }
+    }
+    
+    void readWeightings(StreamTokenizer tok, boolean fnd) throws IOException
+    {
+//    //Read InstitutionalWeightings
+//        int t = tok.nextToken();    //WATCHOUT
+//        while(t != StreamTokenizer.TT_EOF)
+//            {                               
+//                switch(t)
+//                {
+//                    case StreamTokenizer.TT_EOL:
+//                        break;
+//                    case StreamTokenizer.TT_NUMBER:                    
+////                        System.out.println("nextToken():"+tok.nval);
+//                        break;
+//                    case StreamTokenizer.TT_WORD:
+////                        System.out.println("nextToken():"+tok.sval);
+//                        break;
+//                }
+//                t= tok.nextToken();
+//            }
+    }  
+    
+    void generateDistanceMatrices() 
+    {
+//        System.out.println("roomToRoom:");
+//        for(int i=0;i<roomVector.size();i++)
+//        {            
+//                System.out.print("ROOMS: "+roomVector.get(i).roomId+" ");
+//                System.out.print("FACULTIES: \t"+roomVector.get(i).getFaculty().facId+" ");
+//                System.out.println("CAMPUSES: \t"+roomVector.get(i).getFaculty().getCampus().campId+" ");                       
+//        }
+        
+        for(int i=0;i<numberOfRooms;i++)
+        {
+            for(int j=i;j<numberOfRooms;j++)
+            {
+                double long1,long2,lat1,lat2;
+                Room rm1 = roomVector.get(i);
+                Room rm2 = roomVector.get(j);
+//                System.out.print("Room "+rm1.roomId+" to "+rm2.roomId+" = ");
+                if(rm1.getFaculty().facId==rm2.getFaculty().facId)
+                {
+                    //rm2Fac+Fac2rm
+//                    System.out.println("\n"+rm1.roomId+".getFaculty().facId="+rm1.getFaculty().facId);
+//                    System.out.println(rm2.roomId+".getFaculty().facId="+rm2.myFaculty.facId);
+                    roomToRoomDistanceMatrix[i][j]=0.0;
+                    roomToRoomDistanceMatrix[j][i]=0.0;
+//                    System.out.println(roomToRoomDistanceMatrix[i][j]+"m");
+                }
+                else 
+                {
+                    if(rm1.getFaculty().getCampus().campId==rm2.getFaculty().getCampus().campId)
+                    {
+                        //rm2Fac+Fac2Fac+Fac2rm
+//                        System.out.println("\n"+rm1.roomId+".getFaculty().facId="+rm1.getFaculty().facId);
+//                        System.out.println(rm2.roomId+".getFaculty().facId="+rm2.myFaculty.facId);
+                        long1 = rm1.getFaculty().longitude;
+                        lat1 = rm1.getFaculty().latitude;
+                        long2 = rm2.getFaculty().longitude;
+                        lat2 = rm2.getFaculty().latitude;
+                        roomToRoomDistanceMatrix[i][j] = rm1.distToFaculty
+                                +gpsDistance(long1,lat1,long2,lat2)+rm2.distToFaculty;
+                        roomToRoomDistanceMatrix[j][i] = rm1.distToFaculty
+                                +gpsDistance(long1,lat1,long2,lat2)+rm2.distToFaculty;
+//                        System.out.println(roomToRoomDistanceMatrix[i][j]+"m");
+                    }
+                    else
+                    {
+//                        System.out.println("\n"+rm1.roomId+".getFaculty().getCampus().campId="+rm1.getFaculty().getCampus().campId);
+//                        System.out.println("\n"+rm2.roomId+".getFaculty().getCampus().campId="+rm2.getFaculty().getCampus().campId);
+                        long1=rm1.getFaculty().getCampus().longitude;
+                        lat1=rm1.getFaculty().getCampus().latitude;
+                        long2=rm2.getFaculty().getCampus().longitude;
+                        lat2=rm2.getFaculty().getCampus().latitude;
+                        
+                        //rm2Fac+Fac2Cam+Cam2Cam+Cam2Fac+Fac2rm
+                        roomToRoomDistanceMatrix[i][j]=rm1.distToFaculty+rm1.getFaculty().distToCampus
+                                +gpsDistance(long1,lat1,long2,lat2)+rm2.getFaculty().distToCampus
+                                +rm2.distToFaculty;
+                        roomToRoomDistanceMatrix[j][i]=rm1.distToFaculty+rm1.getFaculty().distToCampus
+                                +gpsDistance(long1,lat1,long2,lat2)+rm2.getFaculty().distToCampus
+                                +rm2.distToFaculty;
+//                        System.out.println(roomToRoomDistanceMatrix[i][j]+"m");
+                    }                   
+                }                    
+            }
+        }               
+        
+        System.out.println("roomToRoomDistanceMatrix: ");
+        for(int i=0;i<numberOfRooms;i++)
+        {
+            for(int j=0;j<numberOfRooms;j++)
+            {
+//                System.out.println(formatter.format(4.0));
+                System.out.print(formatter.format(roomToRoomDistanceMatrix[i][j])+" ");
+            }
+            System.out.println();
+        }
+    }
+    
+    double gpsDistance(double lo1, double la1,double lo2,double la2)
+    {        
+            double R = 6378.137; // Radius of earth in KM
+            double dLat = la2 * Math.PI / 180 - la1 * Math.PI / 180;
+            double dLon = lo2 * Math.PI / 180 - lo1 * Math.PI / 180;
+            double a = Math.sin(dLat/2) * Math.sin(dLat/2) 
+                        + Math.cos(la1 * Math.PI / 180) * Math.cos(la2 * Math.PI / 180) 
+                        * Math.sin(dLon/2) * Math.sin(dLon/2);
+            double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            double d = R * c;
+            return d * 1000; // meters          
     }
     
     void addExam(StreamTokenizer tok)            
     {   
         int line = tok.lineno()-1;
-        if(line<=numberOfExams)examVector.add(new Exam(line-1,(int)tok.nval));              
+        examDuration = (int)tok.nval;
+        if(line<=numberOfExams)examVector.add(new Exam(line,examDuration));              
     }
     
-//    void createGraph(int[][] cMat)
-//    {
-//        for(int v1=1;v1<=numberOfExams;v1++)
-//        {
-//            exGraph.addVertex(v1);
-//        }
-// 
-//        for(int v1=1;v1<=numberOfExams;v1++)
-//        {
-//            for(int v2=1;v2<=numberOfExams;v2++)
-//            {
-//                if(cMat[v1-1][v2-1]!=0)exGraph.addEdge(v1, v2);
-//            }
-//        }        
-//    } 
-
-    public void createSolution(PermutationSolution<Integer> solution)
+    void addTimeSlot(int id, int d, int p, int dur)            
+    {   
+        timeslotVector.add(new TimeSlot(id,d,p,dur));              
+    }
+                  //(fCount,camp,lon,lat,dToCamp);
+    void addFaculty(int id, int c, double lon, double lat, int dToC)
     {
-    
+        facultyVector.add(new Faculty(id, c, lon, lat, dToC));
     }
+    
+    void addRoom(int c,int id,int f,int dToF)
+    {
+        roomVector.add(new Room(c,id,f,dToF));
+        overallRoomCapacity+=c;
+//        System.out.println("overallRoomCapacity = "+overallRoomCapacity);
+    }
+    
+    void addCampus(int id,double lon,double lat)
+    {
+        campusVector.add(new Campus(id,lon,lat));
+    }
+    
+    void allocateTimeSlots()
+    {
+        coloredGraph  = new RandomGreedyColoring(exGraph).getColoring();
+        for(int i=0;i<examVector.size();i++)
+        {           
+            examVector.get(i).setTimeSlot(timeslotVector.get((int)coloredGraph.getColors().get(i+1)));
+        }
+    }
+    
+    void allocateRooms(ArrayList rooms)
+    {
+        Collections.shuffle(rooms);
+        for(int i = 0; i<examVector.size();i++)
+        {   
+            int rm = ((int)rooms.get(i)%numberOfRooms);
+            examVector.get(i).room = roomVector.get(rm);
+            roomVector.get(rm).allocateExam(examVector.get(i));
+//            System.out.println("examVector.get("+i+").room = "+examVector.get(i).room.roomId);
+        }
+    }
+    
+    ArrayList<ArrayList<Integer>> generateTimeTableMatrix()
+    {
+        ArrayList<Integer> randRooms = new ArrayList<>();
+        for(int i=0;i<=numberOfRooms;i++)
+        {
+            randRooms.add(i);
+        }
+        allocateTimeSlots();
+        allocateRooms(randRooms);
+        ArrayList<Integer> tmpSlots = new ArrayList<>();
+        for(int i = 0; i<numberOfTimeSlots;i++)tmpSlots.add(i,0); 
+        
+        for(int j = 0; j<examVector.size();j++)timetableSolution.add(j, new ArrayList<Integer>(tmpSlots));
+        
+        for(int i = 0; i<numberOfExams;i++)
+        {            
+            for(int j = 0; j<numberOfTimeSlots;j++)
+            {            
+                if(examVector.get(i).timeslot.id!=j+1)continue;            
+                timetableSolution.get(i).set(j, examVector.get(i).room.roomId);                   
+            }
+        }
+        return timetableSolution;
+    }   
+            
     
     @Override
-    public void evaluate(PermutationSolution<Integer> solution) 
+    public IntegerMatrixSolution<ArrayList<Integer>> createSolution() 
     {
-        double fitness=0;                 
-        
-        for(int i=0; i<numberOfExams-1;i++)
-        {                      
-            for(int j=i+1; j<numberOfExams;j++)
-            {
-                int x = solution.getVariable(i);
-                int y = solution.getVariable(j);
-                int prox = (int)Math.pow(2,(5 - Math.abs(i-j)));
-                fitness+=prox*conflictMatrix[x][y];
-            }                                                       
-        }        
+        timetableSolution = generateTimeTableMatrix();
 
-        fitness = fitness/studentMap.size();
-        solution.setObjective(0, fitness);     
-    }
+        DefaultIntegerMatrixSolution sol = new DefaultIntegerMatrixSolution(getListOfExamsPerVariable(), getNumberOfObjectives());
+        
+        for (int i = 0 ; i < getLength(); i++)
+        {
+            sol.setVariable(i, timetableSolution.get(i));
+            sol.setAttribute(i, conflictMatrix);
+        }
+        
+        return sol;
+    }         
     
-//    public boolean evaluateConstraints(PermutationSolution<Integer> solution)
-//    {        
+    @Override
+    public void evaluate(IntegerMatrixSolution<ArrayList<Integer>> solution)             
+    {
+        boolean isFeasible=false;
+        double fitness1=0.0;
+        double fitness2=0.0;
+        int fitness3=0;
+        //proximity constraint
+        outerloop:
+        for(int i=0; i<numberOfExams;i++)
+        {                      
+            for(int j=0; j<numberOfExams;j++)
+            {
+                int slot1=0,slot2=0;if(i==j)continue;                                  
+                
+                ArrayList<Integer> x = solution.getVariable(i);
+                while(x.get(slot1)==0)slot1++;            
+                
+                ArrayList<Integer> y = solution.getVariable(j);
+//                System.out.println("solution.getVariable("+j+") = "+y);
+                while(y.get(slot2)==0)slot2++; 
+      
+                if(conflictMatrix[i][j]!=0)
+                {
+                    if(slot1==slot2)
+                    {
+                        isFeasible=false;//System.out.print("Solution is Infeasible");
+                        break outerloop;
+                    }
+                    
+                    
+                    int prox = (int)Math.pow(2,(5 - Math.abs(slot1-slot2)));
+
+                    fitness1+=prox*conflictMatrix[i][j];
+                    isFeasible=true;  
+                }
+            }                                                       
+        }
+        //movement constraint
+        for (int s=1;s<=studentMap.size();s++) 
+        {
+            for(int e1=0;e1<studentMap.get(s).examList.size();e1++)
+            {   
+                Exam cExam = examVector.get(studentMap.get(s).examList.get(e1).examId-1);
+                for(int e2=e1;e2<studentMap.get(s).examList.size();e2++)
+                {
+                    if(e1==e2)continue;
+                    Exam nExam = examVector.get(studentMap.get(s).examList.get(e2).examId-1);                 
+                    
+                    int rm1 = cExam.room.roomId;
+                    int rm2 = nExam.room.roomId;
+                    
+                    fitness2+=roomToRoomDistanceMatrix[rm1-1][rm2-1];
+                }
+            }
+        }
+        
+        //room under-utilization constraint
+        int roomUtilization=0;
+        int totalRoomCapacity=0;
+        for(int i =0;i<solution.getNumberOfVariables();i++)
+        {
+            ArrayList<Integer> x = solution.getVariable(i);
+            for(int j =0;j<x.size();j++)
+            {
+                if(x.get(j)==0)continue;
+                totalRoomCapacity+=roomVector.get(x.get(j)-1).capacity;
+                roomUtilization+=roomVector.get(x.get(j)-1).examList.get(i).studentsCount;
+            }
+        } 
+        fitness3 = totalRoomCapacity-roomUtilization;
+               
+//        solution.setObjective(0, fitness1);
+//        solution.setObjective(0, fitness2);
+//        solution.setObjective(0, fitness3);
+        solution.setObjective(0, (isFeasible)?((fitness1+fitness2)/studentMap.size())+fitness3:Integer.MAX_VALUE);
+
+        System.out.println("Solution Evaluated: "+solution.getObjective(0)+" Variable: "+solution.getVariables());
+    } 
+    
+    public boolean evaluateConstraints(IntegerMatrixSolution<ArrayList<Integer>> solution)
+    {                
 ////        int clash=0;
 //        int P = solution.getNumberOfVariables();
 //        
@@ -299,146 +912,18 @@ public class ETP extends AbstractIntegerPermutationProblem
 //        solution.setConstraint(0, violationCount);  
 //        System.out.println("Constraint = "+violationCount);
 //        return clash;
-//    }
+        return false;
+    }
     
+    @Override
+    public int getLength() 
+    {
+        return numberOfExams;
+    }   
     
-//    void readPeriods(StreamTokenizer tok, boolean fnd) throws IOException
-//    {
-//    //Read Periods
-//        fnd=false;
-//        int t;
-//        while(!fnd) 
-//        {
-//            if ((tok.sval != null) && ((tok.sval.compareTo("Rooms") == 0)))
-//            {
-//                tok.nextToken();
-//                tok.nextToken();
-////                numberOfRooms=(int)tok.nval;
-////                System.out.println("Finished Reading Periods.");
-////                System.out.println("Number of Periods = "+numberOfRooms);
-//                fnd = true ;
-//            }                
-//            else
-//            {                                                   
-//                t = tok.nextToken();
-//                switch(t)
-//                {
-//                    case StreamTokenizer.TT_EOL:
-//                        break;
-//                    case StreamTokenizer.TT_NUMBER:                    
-////                        System.out.println("nextToken():"+tok.nval);
-//                        break;
-//                }
-//            }
-//        }
-//    }
-    
-//    void readRooms(StreamTokenizer tok, boolean fnd) throws IOException
-//    {
-//    //Read Rooms
-//        fnd=false;int t;
-//        while(!fnd) 
-//        {
-//            if ((tok.sval != null) && ((tok.sval.compareTo("PeriodHardConstraints") == 0)))
-//            {
-//                tok.nextToken();
-////                System.out.println("Finished Reading Rooms.");
-//                fnd = true ;
-//            }                
-//            else
-//            {                                                   
-//                t = tok.nextToken();
-//                switch(t)
-//                {
-//                    case StreamTokenizer.TT_EOL:
-//                        break;
-//                    case StreamTokenizer.TT_NUMBER:                    
-////                        System.out.println("nextToken():"+tok.nval);
-//                        break;
-//                }
-//            }
-//        }
-//    }
-    
-//    void readConstraints(StreamTokenizer tok, boolean fnd) throws IOException
-//    {
-//        //Read PeriodHardConstraints
-//        fnd=false;int t;
-//        while(!fnd) 
-//        {
-//            if ((tok.sval != null) && ((tok.sval.compareTo("RoomHardConstraints") == 0)))
-//            {
-//                tok.nextToken();
-//                tok.nextToken();
-////                numberOfRooms=(int)tok.nval;
-////                System.out.println("Finished Reading PeriodHardConstraints.");
-//                fnd = true ;
-//            }                
-//            else
-//            {                                                   
-//                t = tok.nextToken();
-//                switch(t)
-//                {
-//                    case StreamTokenizer.TT_EOL:
-//                        break;
-//                    case StreamTokenizer.TT_NUMBER:                    
-////                        System.out.println("nextToken():"+tok.nval);
-//                        break;
-//                    case StreamTokenizer.TT_WORD:
-////                        System.out.println("nextToken():"+tok.sval);
-//                        break;
-//                }
-//            }
-//        }
-//
-//        //Read RoomHardConstraints
-//        fnd=false;
-//        while(!fnd) 
-//        {
-//            if ((tok.sval != null) && ((tok.sval.compareTo("InstitutionalWeightings") == 0)))
-//            {
-//                tok.nextToken();
-//                tok.nextToken();
-//                numberOfRooms=(int)tok.nval;
-////                System.out.println("Finished Reading RoomHardConstraints.");
-//                fnd = true ;
-//            }                
-//            else
-//            {                                                   
-//                t = tok.nextToken();
-//                switch(t)
-//                {
-//                    case StreamTokenizer.TT_EOL:
-//                        break;
-//                    case StreamTokenizer.TT_NUMBER:                    
-////                        System.out.println("nextToken():"+tok.nval);
-//                        break;
-//                    case StreamTokenizer.TT_WORD:
-////                        System.out.println("nextToken():"+tok.sval);
-//                        break;
-//                }
-//            }
-//        }
-//    }
-    
-//    void readWeightings(StreamTokenizer tok, boolean fnd) throws IOException
-//    {
-//    //Read InstitutionalWeightings
-//        int t = tok.nextToken();    //WATCHOUT
-//        while(t != StreamTokenizer.TT_EOF)
-//            {                               
-//                switch(t)
-//                {
-//                    case StreamTokenizer.TT_EOL:
-//                        break;
-//                    case StreamTokenizer.TT_NUMBER:                    
-////                        System.out.println("nextToken():"+tok.nval);
-//                        break;
-//                    case StreamTokenizer.TT_WORD:
-////                        System.out.println("nextToken():"+tok.sval);
-//                        break;
-//                }
-//                t= tok.nextToken();
-//            }
-//    }          
+    @Override
+    public ArrayList<Integer> getListOfExamsPerVariable() {
+        ArrayList<Integer> list = new ArrayList<>(Arrays.asList(numberOfExams)); 
+        return list ;
+    }
 }
