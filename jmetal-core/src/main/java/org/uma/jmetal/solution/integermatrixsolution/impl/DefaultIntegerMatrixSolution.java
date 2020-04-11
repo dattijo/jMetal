@@ -23,6 +23,8 @@
  */
 package org.uma.jmetal.solution.integermatrixsolution.impl;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 import org.uma.jmetal.solution.AbstractSolution;
 import org.uma.jmetal.solution.integermatrixsolution.IntegerMatrixSolution;
@@ -32,20 +34,38 @@ import org.uma.jmetal.solution.integermatrixsolution.IntegerMatrixSolution;
  * @author PhDLab
  */
 @SuppressWarnings("serial")
-public class DefaultIntegerMatrixSolution extends AbstractSolution<Integer[]> 
-    implements IntegerMatrixSolution<Integer[]> 
+public class DefaultIntegerMatrixSolution extends AbstractSolution<ArrayList<Integer>> 
+    implements IntegerMatrixSolution<ArrayList<Integer>> 
 {
+    ArrayList<Integer> examsPerTimeslot;
     
   /** Constructor */
-  public DefaultIntegerMatrixSolution(int permutationLength, int numberOfObjectives) {
-    super(permutationLength, numberOfObjectives); 
-
+  public DefaultIntegerMatrixSolution(ArrayList <Integer> numberOfExams, int numberOfObjectives) {
+    super(numberOfExams.get(0), numberOfObjectives); 
+    this.examsPerTimeslot=numberOfExams;
+    
+    initializeVariables();
   }
 
   /** Copy Constructor */
-  public DefaultIntegerMatrixSolution(DefaultIntegerMatrixSolution [] solution) {
-    super(solution[].getLength(), solution[].getNumberOfObjectives());
+  public DefaultIntegerMatrixSolution(DefaultIntegerMatrixSolution solution) {
+    super(solution.getLength(), solution.getNumberOfObjectives());
 
+     this.examsPerTimeslot = solution.examsPerTimeslot;
+
+    for (int i = 0; i < getNumberOfVariables(); i++) {
+      setVariable(i, (ArrayList)solution.getVariable(i).clone());
+    }
+
+    for (int i = 0; i < getNumberOfObjectives(); i++) {
+      setObjective(i, solution.getObjective(i)) ;
+    }
+
+    for (int i = 0; i < getNumberOfConstraints(); i++) {
+      setConstraint(i, solution.getConstraint(i));
+    }
+
+    attributes = new HashMap<Object, Object>(solution.attributes) ;
   }
 
   @Override
@@ -61,5 +81,11 @@ public class DefaultIntegerMatrixSolution extends AbstractSolution<Integer[]>
   @Override
   public int getLength() {
     return getNumberOfVariables();
+  }
+  
+  private void initializeVariables() {
+    for (int i = 0; i < getNumberOfVariables(); i++) {
+      setVariable(i, new ArrayList<>());
+    }
   }
 }
