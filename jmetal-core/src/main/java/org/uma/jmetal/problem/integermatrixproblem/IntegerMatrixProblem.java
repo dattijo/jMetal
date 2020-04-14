@@ -14,4 +14,6 @@ public interface IntegerMatrixProblem <S extends IntegerMatrixSolution<?>> exten
     int getExamsFromVariable(int index);
     
 //    int geTotalNumberOfExams();
+
+    public int[][] getConflictMatrix();
 }

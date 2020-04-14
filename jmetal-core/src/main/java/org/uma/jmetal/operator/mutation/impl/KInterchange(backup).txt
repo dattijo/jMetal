@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.Random;
 import org.uma.jmetal.operator.mutation.MutationOperator;
 import org.uma.jmetal.solution.integermatrixsolution.IntegerMatrixSolution;
 import org.uma.jmetal.solution.integermatrixsolution.impl.DefaultIntegerMatrixSolution;
@@ -110,14 +109,12 @@ public class KempeChainInterchange<T> implements MutationOperator<IntegerMatrixS
 //-------------------------------<original>------------------------------------>
 
 //------------------------------<kempechain>----------------------------------->  
-//        System.out.println("Solution before kinterchange:"+solution.getVariables());
+        System.out.println("Solution before kinterchange:"+solution.getVariables());
         
         int timeslot1,timeslot2;
-//        Set<ArrayList<Integer>> ti = new HashSet<>();
-//        Set<ArrayList<Integer>> tj = new HashSet<>();
-        ArrayList arrayTi = new ArrayList();
-        ArrayList arrayTj = new ArrayList();        
-//        Set<ArrayList<Integer>> K = new HashSet<>(); 
+        Set<ArrayList<Integer>> ti = new HashSet<>();
+        Set<ArrayList<Integer>> tj = new HashSet<>();        
+        Set<ArrayList<Integer>> K = new HashSet<>(); 
         
         Map<ArrayList,Integer> examIndices = new HashMap<>();
         
@@ -128,7 +125,7 @@ public class KempeChainInterchange<T> implements MutationOperator<IntegerMatrixS
         {
             if(exam1.get(timeslot1)!=0)break;            
         }
-//        System.out.println("rand exam1 "+exam1+" timeslot1= "+timeslot1);
+//        System.out.println("exam1"+exam1+" timeslot1="+timeslot1);
          
         ArrayList<Integer> exam2 = new ArrayList<>((ArrayList)sol.get(pos2));
 
@@ -136,148 +133,110 @@ public class KempeChainInterchange<T> implements MutationOperator<IntegerMatrixS
         {
             if(exam2.get(timeslot2)!=0)break;
         }
-//        System.out.println("rand exam2 "+exam2+" timeslot2= "+timeslot2);
+//        System.out.println("exam2"+exam2+" timeslot2="+timeslot2);
 //        System.out.println("solution (before kinterchange)"+solution.getVariables());
 //        System.out.println("sol (before kinterchange)"+sol);
         
         for(int i=0;i<sol.size();i++)
         {
-            while(timeslot1==timeslot2)
-            {
-                Random rand = new Random();
-                pos2 = rand.nextInt(sol.get(pos2).size());
-                
-                exam2 = new ArrayList<>((ArrayList)sol.get(pos2));
-
-                for(timeslot2=0;timeslot2<exam2.size();timeslot2++)
-                {
-                    if(exam2.get(timeslot2)!=0)break;
-                }
-            }
-            
+            if(timeslot1==timeslot2)break;
             ArrayList<Integer> currExam = new ArrayList<>(sol.get(i));           
             if(currExam.get(timeslot1)!=0)
             {
-                arrayTi.add(new ArrayList(currExam));
+                //ti.add((ArrayList)currExam.clone());
+                ti.add(new ArrayList(currExam));
                 examIndices.put(currExam, i);
+//                sol.remove(currExam);
+//                tiExams.add(i);
+//                solution.setVariable(i, (T)currExam);
             }
             if(currExam.get(timeslot2)!=0)
             {
-                arrayTj.add(new ArrayList(currExam));
+                //tj.add((ArrayList)currExam.clone());
+                tj.add(new ArrayList(currExam));
                 examIndices.put(currExam, i);
+//                sol.remove(currExam);
+//                tjExams.add(i);
+//                solution.setVariable(i, (T)currExam);
             }
         } 
-//          System.out.println("Exams with timeslot1 ("+timeslot1+"): "+arrayTi);          
-//          System.out.println("Exams with timeslot2 ("+timeslot2+"): "+arrayTj);
-//          System.out.println(" with indices "+examIndices);
-                                  
-//        ArrayList tmpTi = new ArrayList();
-//        ArrayList tmpTj = new ArrayList();
+          
+          
+        ArrayList arrayTi = new ArrayList(ti);
+        ArrayList arrayTj = new ArrayList(tj);
         
-//        System.out.println("sol.get("+pos1+"):"+sol.get(pos1)+" b4 swap");
-        int oRoom = sol.get(pos1).get(timeslot1);
-//        System.out.println("Moving prime candidate exam"+sol.get(pos1)+" in room "+oRoom+" from timeslot "+timeslot1+" to "+timeslot2);
-        sol.get(pos1).set(timeslot1, 0);
-        sol.get(pos1).set(timeslot2, oRoom);
-//        System.out.println("Moved. "+sol.get(pos1));
+        ArrayList tmpTi = new ArrayList();
+        ArrayList tmpTj = new ArrayList();
         
-//        System.out.println("Now checking arrayTj for conflict with prime...");
-        for(int j=0;j<arrayTj.size();j++)
-        {
-            if(conflictMatrix[pos1][examIndices.get(arrayTj.get(j))]!=0)
-            {
-                int oldRoom = sol.get(examIndices.get(arrayTj.get(j))).get(timeslot2);
-                System.out.println("Moving "+sol.get(examIndices.get(arrayTj.get(j)))+" in room "+oldRoom+" from timeslot "+timeslot2+" to "+timeslot1);
-                if(oldRoom!=0)
-                {
-                    sol.get(examIndices.get(arrayTj.get(j))).set(timeslot2, 0);
-                    sol.get(examIndices.get(arrayTj.get(j))).set(timeslot1, oldRoom);
-                }
-                System.out.println("Moved. "+sol.get(examIndices.get(arrayTj.get(j))));
-//                System.out.println("sol.get(examIndices.get("+examIndices.get(arrayTj.get(j))+")="+sol.get(examIndices.get(arrayTj.get(j))));
-            }
-        } 
-        
-//        System.out.println("Now checking arrayTi for conflict with exams moved from arrayTj due to prime...");
         for(int i=0;i<arrayTi.size();i++)
         {
             for(int j=0;j<arrayTj.size();j++)
             {
                 if(conflictMatrix[examIndices.get(arrayTi.get(i))][examIndices.get(arrayTj.get(j))]!=0)
                 {
-//                    System.out.println("checking arrayTi");
-                    if(examIndices.get(arrayTi.get(i))==pos1)continue;
-                    int oldRoom = sol.get(examIndices.get(arrayTi.get(i))).get(timeslot1);
-                    System.out.println("Moving "+sol.get(examIndices.get(arrayTi.get(i)))+" in room "+oldRoom+" from timeslot "+timeslot1+" to "+timeslot2);
-                    if(oldRoom!=0)
-                    {                        
-                        sol.get(examIndices.get(arrayTi.get(i))).set(timeslot1, 0);
-                        sol.get(examIndices.get(arrayTi.get(i))).set(timeslot2, oldRoom);
-                    }
-                    System.out.println("Moved. "+sol.get(examIndices.get(arrayTi.get(i))));
-//                    System.out.println("sol.get(examIndices.get("+examIndices.get(arrayTi.get(i))+")="+sol.get(examIndices.get(arrayTi.get(i))));
-//                    tmpTi.add(arrayTi.get(i));//System.out.println("adding "+arrayTi.get(i)+" to K");
-//                    tmpTj.add(arrayTj.get(j));//System.out.println("adding "+arrayTj.get(j)+" to K");
+//                    System.out.println("conflictMatrix[i][j]= "+conflictMatrix[i][j]);System.out.println(arrayTi.get(i)+" conflicts "+arrayTj.get(j));
+                    tmpTi.add(arrayTi.get(i));//System.out.println("adding "+arrayTi.get(i)+" to K");
+                    tmpTj.add(arrayTj.get(j));//System.out.println("adding "+arrayTj.get(j)+" to K");
                 }
             }            
         }
         
-//        K.addAll(tmpTi);
-//        K.addAll(tmpTj);
-////        System.out.println("K {"+K+"}");
-//        Set ti_complement_K = new HashSet<>(tmpTi);
-//        Set tj_intersection_K = new HashSet<>(tmpTj);
-//        ti_complement_K.removeAll(K);
-//        tj_intersection_K.retainAll(K);
-//        Set newTi = new HashSet<>(ti_complement_K);
-//        newTi.addAll(tj_intersection_K);    
-////        System.out.println("newTi"+newTi);
-//        
-//        Set tj_complement_K = new HashSet<>(tmpTj);
-//        Set ti_intersection_K = new HashSet<>(tmpTi);
-//        tj_complement_K.removeAll(K);
-//        ti_intersection_K.retainAll(K);
-//        Set newTj = new HashSet<>(tj_complement_K);
-//        newTj.addAll(ti_intersection_K);
-////        System.out.println("newTj"+newTj);
-//        
-//        ArrayList newTiArray = new ArrayList();
-//        newTiArray.addAll(newTi);
-//        for(int i=0;i<newTiArray.size();i++)
-//        {
-//            ArrayList<Integer> currExam = new ArrayList((ArrayList)newTiArray.get(i));
-//            int index = examIndices.get(currExam);
-//            if(currExam.get(timeslot2)!=0)
-//            { 
-//                int oldRoom = currExam.get(timeslot2);
-//                currExam.set(timeslot2, 0);
-//                currExam.set(timeslot1, oldRoom);
-//            }
+        K.addAll(tmpTi);
+        K.addAll(tmpTj);
+//        System.out.println("K {"+K+"}");
+        Set ti_complement_K = new HashSet<>(tmpTi);
+        Set tj_intersection_K = new HashSet<>(tmpTj);
+        ti_complement_K.removeAll(K);
+        tj_intersection_K.retainAll(K);
+        Set newTi = new HashSet<>(ti_complement_K);
+        newTi.addAll(tj_intersection_K);    
+//        System.out.println("newTi"+newTi);
+        
+        Set tj_complement_K = new HashSet<>(tmpTj);
+        Set ti_intersection_K = new HashSet<>(tmpTi);
+        tj_complement_K.removeAll(K);
+        ti_intersection_K.retainAll(K);
+        Set newTj = new HashSet<>(tj_complement_K);
+        newTj.addAll(ti_intersection_K);
+//        System.out.println("newTj"+newTj);
+        
+        ArrayList newTiArray = new ArrayList();
+        newTiArray.addAll(newTi);
+        for(int i=0;i<newTiArray.size();i++)
+        {
+            ArrayList<Integer> currExam = new ArrayList((ArrayList)newTiArray.get(i));
+            int index = examIndices.get(currExam);
+            if(currExam.get(timeslot2)!=0)
+            { 
+                int oldRoom = currExam.get(timeslot2);
+                currExam.set(timeslot2, 0);
+                currExam.set(timeslot1, oldRoom);
+            }
+            sol.set(index, currExam);
+//            sol.add(currExam);
+//            System.out.println("tjExams="+tjExams+"\ti="+i);
+//            int index = tjExams.get(i);
 //            sol.set(index, currExam);
-////            sol.add(currExam);
-////            System.out.println("tjExams="+tjExams+"\ti="+i);
-////            int index = tjExams.get(i);
-////            sol.set(index, currExam);
-//        }
-//        
-//        ArrayList newTjArray = new ArrayList();
-//        newTjArray.addAll(newTj);
-//        for(int i=0;i<newTjArray.size();i++)
-//        {
-//            ArrayList<Integer> currExam = new ArrayList((ArrayList)newTjArray.get(i));
-//            int index = examIndices.get(currExam);
-//            if(currExam.get(timeslot1)!=0)
-//            {   
-//                int oldRoom = currExam.get(timeslot1);
-//                currExam.set(timeslot1, 0);
-//                currExam.set(timeslot2, oldRoom);
-//            }
-//            sol.set(index, currExam);
+        }
+        
+        ArrayList newTjArray = new ArrayList();
+        newTjArray.addAll(newTj);
+        for(int i=0;i<newTjArray.size();i++)
+        {
+            ArrayList<Integer> currExam = new ArrayList((ArrayList)newTjArray.get(i));
+            int index = examIndices.get(currExam);
+            if(currExam.get(timeslot1)!=0)
+            {   
+                int oldRoom = currExam.get(timeslot1);
+                currExam.set(timeslot1, 0);
+                currExam.set(timeslot2, oldRoom);
+            }
+            sol.set(index, currExam);
 //            sol.add(currExam);
 //            System.out.println("tiExams="+tiExams+"\ti="+i);
 //            int index = tiExams.get(i);
 //            sol.set(index, currExam);            
-//        }
+        }
 //          System.out.println("sol.size()="+sol.size());
 //          System.out.println("solution.size()="+solution.getNumberOfVariables());
         for(int i=0;i<solution.getNumberOfVariables();i++)
@@ -286,29 +245,27 @@ public class KempeChainInterchange<T> implements MutationOperator<IntegerMatrixS
 //            sol.add(new ArrayList((ArrayList)solution.getVariable(i)));
         }
         
-//        System.out.println("solution (after kinterchange)"+solution.getVariables());
+        System.out.println("solution (after kinterchange)"+solution.getVariables());
 //        System.out.println("sol (after kinterchange)"+sol);
-        for(int i=0; i<permutationLength-1;i++)
+        for(int i=0; i<permutationLength;i++)
         {                      
-            for(int j=i+1; j<permutationLength;j++)
+            for(int j=0; j<permutationLength;j++)
             {
                 if(i==j)continue;
                 
                 int slot1=0,slot2=0;                                  
                 
-                ArrayList<Integer> x = (ArrayList)solution.getVariable(i);
+                ArrayList<Integer> x = (ArrayList)sol.get(i);
                 while(x.get(slot1)==0)slot1++;            
                 
-                ArrayList<Integer> y = (ArrayList)solution.getVariable(j);
+                ArrayList<Integer> y = (ArrayList)sol.get(j);
                 while(y.get(slot2)==0)slot2++; 
       
-                
                 if(conflictMatrix[i][j]!=0)
-                {                    
+                {
                     if(slot1==slot2)
                     {                      
-//                        System.out.println("Solution: "+solution.getVariables());
-                        System.out.println("Exam "+x+" conflicts with exam "+y+" @ timeslot "+slot1);
+                        System.out.println("Exam "+sol.get(i)+" conflicts with exam "+sol.get(j)+" @ timeslot "+slot1);
                     }
                 }
             }                                                       
