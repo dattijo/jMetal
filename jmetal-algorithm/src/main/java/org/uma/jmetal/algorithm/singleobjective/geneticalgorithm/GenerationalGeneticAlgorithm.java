@@ -1,5 +1,6 @@
 package org.uma.jmetal.algorithm.singleobjective.geneticalgorithm;
 
+import java.util.ArrayList;
 import org.uma.jmetal.algorithm.impl.AbstractGeneticAlgorithm;
 import org.uma.jmetal.operator.crossover.CrossoverOperator;
 import org.uma.jmetal.operator.mutation.MutationOperator;
@@ -41,6 +42,8 @@ public class GenerationalGeneticAlgorithm<S extends Solution<?>> extends Abstrac
     this.evaluator = evaluator;
 
     comparator = new ObjectiveComparator<S>(0);
+    
+    
   }
 
   @Override protected boolean isStoppingConditionReached() {
@@ -60,11 +63,17 @@ public class GenerationalGeneticAlgorithm<S extends Solution<?>> extends Abstrac
 
   @Override protected List<S> evaluatePopulation(List<S> population) {
     population = evaluator.evaluate(population, getProblem());
-
+   
     return population;
   }
 
-  @Override public S getResult() {
+  @Override public S getResult() {    
+    //////////////////////////////////////////////aadatti
+//    for(int i=0;i<population.size();i++)        //aadatti
+//    {                                           //aadatti
+//        System.out.println(population.get(i));  //aadatti   
+//    }                                           //aadatti
+    //////////////////////////////////////////////aadatti   
     Collections.sort(getPopulation(), comparator) ;
     return getPopulation().get(0);
   }

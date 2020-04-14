@@ -79,7 +79,7 @@ public class GeneticAlgorithmBuilder<S extends Solution<?>> {
 
     return this;
   }
-
+    
   public Algorithm<S> build() {
     if (variant == GeneticAlgorithmVariant.GENERATIONAL) {
       return new GenerationalGeneticAlgorithm<S>(problem, maxEvaluations, populationSize,
