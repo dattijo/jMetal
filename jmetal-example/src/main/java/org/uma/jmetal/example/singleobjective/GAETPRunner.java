@@ -9,6 +9,7 @@ import org.uma.jmetal.operator.crossover.CrossoverOperator;
 import org.uma.jmetal.operator.crossover.impl.NullCrossover;
 import org.uma.jmetal.operator.mutation.MutationOperator;
 import org.uma.jmetal.operator.mutation.impl.KempeChainInterchange;
+import org.uma.jmetal.operator.mutation.impl.Kinterchange;
 import org.uma.jmetal.operator.selection.SelectionOperator;
 import org.uma.jmetal.operator.selection.impl.BinaryTournamentSelection;
 import org.uma.jmetal.problem.integermatrixproblem.IntegerMatrixProblem;
@@ -34,7 +35,7 @@ public class GAETPRunner {
     SelectionOperator<List<IntegerMatrixSolution<Integer>>, IntegerMatrixSolution<Integer>> selection;
 
     
-    problem = new ETP("C:/Users/PhDLab/Documents/NetBeansProjects/examTimetableDataReader/exam_comp_set3.exam");
+    problem = new ETP("C:/Users/PhDLab/Documents/NetBeansProjects/examTimetableDataReader/exam_comp_set44.exam");
     
     int[][]conflictMatrix =  problem.getConflictMatrix();
     
@@ -42,14 +43,15 @@ public class GAETPRunner {
 
     double mutationProbability = 0.9 ;   
 
-    mutation = new KempeChainInterchange(mutationProbability, conflictMatrix);
+//    mutation = new KempeChainInterchange(mutationProbability, conflictMatrix);
+    mutation = new Kinterchange(mutationProbability, conflictMatrix);
 
     selection = new BinaryTournamentSelection<IntegerMatrixSolution<Integer>>(
                     new RankingAndCrowdingDistanceComparator<IntegerMatrixSolution<Integer>>());
     
     algorithm = new GeneticAlgorithmBuilder<>(problem, crossover, mutation)
-            .setPopulationSize(10)   //.setPopulationSize(100)
-            .setMaxEvaluations(15) //.setMaxEvaluations(250000) 
+            .setPopulationSize(100)   //.setPopulationSize(100)
+            .setMaxEvaluations(250000) //.setMaxEvaluations(250000) 
             .setSelectionOperator(selection)
             .build() ; 
 
