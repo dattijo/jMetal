@@ -8,7 +8,6 @@ import java.util.Set;
 import java.util.Random;
 import org.uma.jmetal.operator.mutation.MutationOperator;
 import org.uma.jmetal.solution.integermatrixsolution.IntegerMatrixSolution;
-import org.uma.jmetal.solution.integermatrixsolution.impl.DefaultIntegerMatrixSolution;
 import org.uma.jmetal.util.checking.Check;
 import org.uma.jmetal.util.pseudorandom.BoundedRandomGenerator;
 import org.uma.jmetal.util.pseudorandom.JMetalRandom;
@@ -56,6 +55,8 @@ public class KempeChainInterchange<T> implements MutationOperator<IntegerMatrixS
     this.mutationRandomGenerator = mutationRandomGenerator;
     this.positionRandomGenerator = positionRandomGenerator;
     this.conflictMatrix = conMat;
+    
+    
   }
 
   /* Getters */
@@ -73,104 +74,165 @@ public class KempeChainInterchange<T> implements MutationOperator<IntegerMatrixS
   @Override
   public IntegerMatrixSolution<T> execute(IntegerMatrixSolution<T> solution) {
     Check.isNotNull(solution);
+    
+//    System.out.println("ConflictMatrix: ");
+//    for(int i=0;i<solution.getNumberOfVariables();i++)
+//    {
+//        for(int j=0;j<solution.getNumberOfVariables();j++)
+//        {
+//            System.out.print("conflictMatrix["+i+"]["+j+"]:"+conflictMatrix[i][j]+" ");
+//        }
+//        System.out.println();
+//    }
+    
     doMutation(solution);
      
     return solution;
   }
 
-  /** Performs the operation */
-  public void doMutation(IntegerMatrixSolution<T> solution) {
-   
-    ArrayList<ArrayList<Integer>> sol = new ArrayList<>();
+  /** Performs the operation
+     * @param solution */
+  public void doMutation(IntegerMatrixSolution<T> solution) 
+  {
+        System.out.println("solution (before kinterchange)"+solution.getVariables());
+    int permutationLength = solution.getNumberOfVariables();
+      
+    //declare arraylist to hold the Timetable to mutate
+    ArrayList<ArrayList<Integer>> sol = new ArrayList<>();  
     
-    for(int i=0;i<solution.getNumberOfVariables();i++)
+    //Initialize the solution arrayList from @solution
+    for(int i=0;i<permutationLength;i++)
     {
         sol.add(new ArrayList((ArrayList)solution.getVariable(i)));
-    }
-      
-    int permutationLength;
-    permutationLength = solution.getNumberOfVariables();
+    }          
 
-    if ((permutationLength != 0) && (permutationLength != 1)) {
-      if (mutationRandomGenerator.getRandomValue() < mutationProbability) {
-        int pos1 = positionRandomGenerator.getRandomValue(0, permutationLength - 1);
-        int pos2 = positionRandomGenerator.getRandomValue(0, permutationLength - 1);
+    if ((permutationLength != 0) && (permutationLength != 1)) 
+    {
+        if (mutationRandomGenerator.getRandomValue() < mutationProbability) 
+        {
+            int pos1 = positionRandomGenerator.getRandomValue(0, permutationLength - 1);
+            int pos2 = positionRandomGenerator.getRandomValue(0, permutationLength - 1);
 
-        while (pos1 == pos2) {
-          if (pos1 == (permutationLength - 1))
-            pos2 = positionRandomGenerator.getRandomValue(0, permutationLength - 2);
-          else pos2 = positionRandomGenerator.getRandomValue(pos1, permutationLength - 1);
-        }
+            while (pos1 == pos2) 
+            {
+                if (pos1 == (permutationLength - 1))
+                    pos2 = positionRandomGenerator.getRandomValue(0, permutationLength - 2);
+                else 
+                    pos2 = positionRandomGenerator.getRandomValue(pos1, permutationLength - 1);
+            }
    
 //-------------------------------<original>------------------------------------>        
 //        
-//        T temp = solution.getVariable(pos1);
-//        solution.setVariable(pos1, solution.getVariable(pos2));
-//        solution.setVariable(pos2, temp);
+//          T temp = solution.getVariable(pos1);
+//          solution.setVariable(pos1, solution.getVariable(pos2));
+//          solution.setVariable(pos2, temp);
 //-------------------------------<original>------------------------------------>
 
 //------------------------------<kempechain>----------------------------------->  
-//        System.out.println("Solution before kinterchange:"+solution.getVariables());
+//          System.out.println("Solution before kinterchange:"+solution.getVariables());
         
-        int timeslot1,timeslot2;
-//        Set<ArrayList<Integer>> ti = new HashSet<>();
-//        Set<ArrayList<Integer>> tj = new HashSet<>();
-        ArrayList arrayTi = new ArrayList();
-        ArrayList arrayTj = new ArrayList();        
-        Set<ArrayList<Integer>> K = new HashSet<>(); 
-        
-        Map<ArrayList,Integer> examIndices = new HashMap<>();
-        
-        ArrayList<Integer> exam1 = new ArrayList<>((ArrayList)sol.get(pos1));
-          
+            //the timeslots of the randomly selected exams            
+            int timeslot1,timeslot2;                        
+            
+//          Set<ArrayList<Integer>> ti = new HashSet<>();
+//          Set<ArrayList<Integer>> tj = new HashSet<>();
+            
+            //set of exams allocated to @param timeslot1 and @param timeslot2
+            ArrayList arrayTi = new ArrayList();            
+            ArrayList arrayTj = new ArrayList();           
+            
+            //The Kempe Chain
+            Set<ArrayList<Integer>> K = new HashSet<>();    
 
-        for(timeslot1=0;timeslot1<exam1.size();timeslot1++)
-        {
-            if(exam1.get(timeslot1)!=0)break;            
-        }
-//        System.out.println("rand exam1 "+exam1+" timeslot1= "+timeslot1);
-         
-        ArrayList<Integer> exam2 = new ArrayList<>((ArrayList)sol.get(pos2));
-
-        for(timeslot2=0;timeslot2<exam2.size();timeslot2++)
-        {
-            if(exam2.get(timeslot2)!=0)break;
-        }
-//        System.out.println("rand exam2 "+exam2+" timeslot2= "+timeslot2);
-//        System.out.println("solution (before kinterchange)"+solution.getVariables());
-//        System.out.println("sol (before kinterchange)"+sol);
-        
-        for(int i=0;i<sol.size();i++)
-        {
-            while(timeslot1==timeslot2)
+            //store the indices of the exams to be added to @param arrayTi and arrayTj
+            //to facilitate replacement later.
+            Map<ArrayList,Integer> examIndices = new HashMap<>();   
+                                                                    
+            //initialize swap candidates exam1 and exam2
+            ArrayList<Integer> exam1 = new ArrayList<>((ArrayList)sol.get(pos1));               
+            ArrayList<Integer> exam2 = new ArrayList<>((ArrayList)sol.get(pos2));   
+            
+            //get the timeslot of @param exam1
+            for(timeslot1=0;timeslot1<exam1.size();timeslot1++)
             {
-                Random rand = new Random();
-                pos2 = rand.nextInt(sol.get(pos2).size());
-                
-                exam2 = new ArrayList<>((ArrayList)sol.get(pos2));
+                if(exam1.get(timeslot1)!=0)break;            
+            }
+            System.out.println("rand exam1 "+exam1+" timeslot1= "+timeslot1);            
 
-                for(timeslot2=0;timeslot2<exam2.size();timeslot2++)
+            //get the timeslot of @param exam2
+            for(timeslot2=0;timeslot2<exam2.size();timeslot2++)
+            {
+                if(exam2.get(timeslot2)!=0)break;
+            }
+    //        System.out.println("rand exam2 "+exam2+" timeslot2= "+timeslot2);
+            
+    //        System.out.println("sol (before kinterchange)"+sol);
+
+            //populate @param arrayTi and @paramTj
+            for(int i=0;i<sol.size();i++)
+            {
+                //ensure the two random exams are on different timeslots
+                while(timeslot1==timeslot2)
                 {
-                    if(exam2.get(timeslot2)!=0)break;
+                    Random rand = new Random();
+                    pos2 = rand.nextInt(sol.get(pos2).size());
+
+                    exam2 = new ArrayList<>((ArrayList)sol.get(pos2));
+
+                    for(timeslot2=0;timeslot2<exam2.size();timeslot2++)
+                    {
+                        if(exam2.get(timeslot2)!=0)break;
+                    }
+                }
+
+                ArrayList<Integer> currExam = new ArrayList<>(sol.get(i));           
+                if(currExam.get(timeslot1)!=0)
+                {
+                    
+                    if(examIndices.containsKey(currExam))
+                    {
+                        System.out.println("redflag1");
+                        currExam.set(timeslot1, -1);
+                    }
+                    arrayTi.add(new ArrayList(currExam));
+                    examIndices.put(currExam, i);
+                }
+                if(currExam.get(timeslot2)!=0)
+                {
+                    
+                    if(examIndices.containsKey(currExam))
+                    {
+                        System.out.println("redflag2");
+                        currExam.set(timeslot2, -1);
+                    }
+                    arrayTj.add(new ArrayList(currExam));
+                    examIndices.put(currExam, i);
+                }
+            } 
+            System.out.println("arrayTi:"+arrayTi);
+            System.out.println("arrayTj:"+arrayTj);
+            System.out.println("examIndices:"+examIndices);
+            Set tmpTi = new HashSet();
+            Set tmpTj = new HashSet();
+
+            //find exams with conflicts between arrayTi and arrayTj
+            for(int i=0;i<arrayTi.size();i++)
+            {
+                for(int j=0;j<arrayTj.size();j++)
+                {   
+                    System.out.println("conflictMatrix["+examIndices.get(arrayTi.get(i))+"]["+examIndices.get(arrayTj.get(j))+"] = "
+                            +conflictMatrix[examIndices.get(arrayTi.get(i))][examIndices.get(arrayTj.get(j))]);
+                    
+                    if(conflictMatrix[examIndices.get(arrayTi.get(i))][examIndices.get(arrayTj.get(j))]!=0)
+                    {
+                        tmpTi.add(arrayTi.get(i));
+                        tmpTj.add(arrayTj.get(j));
+                    }
                 }
             }
+            System.out.println("Updated ti = "+tmpTi);
+            System.out.println("Updated tj = "+tmpTj);
             
-            ArrayList<Integer> currExam = new ArrayList<>(sol.get(i));           
-            if(currExam.get(timeslot1)!=0)
-            {
-                arrayTi.add(new ArrayList(currExam));
-                examIndices.put(currExam, i);
-            }
-            if(currExam.get(timeslot2)!=0)
-            {
-                arrayTj.add(new ArrayList(currExam));
-                examIndices.put(currExam, i);
-            }
-        } 
-          
-                                  
-        ArrayList tmpTi = new ArrayList(arrayTi);
-        ArrayList tmpTj = new ArrayList(arrayTj);
         
 //        System.out.println("\n\nNEW CANDIDATE SOLUTION"+sol);
 //        System.out.print("Prime @ position ("+pos1+") = "+sol.get(pos1)+" b4 swap");
@@ -233,40 +295,50 @@ public class KempeChainInterchange<T> implements MutationOperator<IntegerMatrixS
 //                }            
 //            }
 //        }
+       
+        
+//        K.addAll(arrayTi);
+//        K.addAll(arrayTj);
         
         K.addAll(tmpTi);
-        K.addAll(tmpTj);
-//        System.out.println("K {"+K+"}");
-        Set ti_complement_K = new HashSet<>(tmpTi);
-        Set tj_intersection_K = new HashSet<>(tmpTj);
+        K.addAll(tmpTj);        
+        
+        System.out.println("K {"+K+"}");
+        Set ti_complement_K = new HashSet<>(arrayTi);
+        Set tj_intersection_K = new HashSet<>(arrayTj);
         ti_complement_K.removeAll(K);
         tj_intersection_K.retainAll(K);
         Set newTi = new HashSet<>(ti_complement_K);
         newTi.addAll(tj_intersection_K);    
-//        System.out.println("newTi"+newTi);
+        System.out.println("newTi"+newTi);
         
-        Set tj_complement_K = new HashSet<>(tmpTj);
-        Set ti_intersection_K = new HashSet<>(tmpTi);
+        Set tj_complement_K = new HashSet<>(arrayTj);
+        Set ti_intersection_K = new HashSet<>(arrayTi);
         tj_complement_K.removeAll(K);
         ti_intersection_K.retainAll(K);
         Set newTj = new HashSet<>(tj_complement_K);
         newTj.addAll(ti_intersection_K);
-//        System.out.println("newTj"+newTj);
+        System.out.println("newTj"+newTj);
         
         ArrayList newTiArray = new ArrayList();
         newTiArray.addAll(newTi);
+                       
         for(int i=0;i<newTiArray.size();i++)
         {
             ArrayList<Integer> currExam = new ArrayList((ArrayList)newTiArray.get(i));
             int index = examIndices.get(currExam);
+            
+//            System.out.println("currExam b4 swap "+currExam);
+            
             if(currExam.get(timeslot2)!=0)
             { 
-                int oldRoom = currExam.get(timeslot2);
+                int oldRoom = currExam.get(timeslot2);                
                 currExam.set(timeslot2, 0);
                 currExam.set(timeslot1, oldRoom);
             }
+//            System.out.println("currExam after swap = "+currExam);
             sol.set(index, currExam);
-//            sol.add(currExam);
+            sol.add(currExam);
 //            System.out.println("tjExams="+tjExams+"\ti="+i);
 //            int index = tjExams.get(i);
 //            sol.set(index, currExam);
@@ -278,20 +350,24 @@ public class KempeChainInterchange<T> implements MutationOperator<IntegerMatrixS
         {
             ArrayList<Integer> currExam = new ArrayList((ArrayList)newTjArray.get(i));
             int index = examIndices.get(currExam);
+            
+//            System.out.println("currExam b4 swap "+currExam);
+            
             if(currExam.get(timeslot1)!=0)
             {   
                 int oldRoom = currExam.get(timeslot1);
                 currExam.set(timeslot1, 0);
                 currExam.set(timeslot2, oldRoom);
             }
+//            System.out.println("currExam after swap = "+currExam);
             sol.set(index, currExam);
             sol.add(currExam);
 //            System.out.println("tiExams="+tiExams+"\ti="+i);
-            int index = tiExams.get(i);
-            sol.set(index, currExam);            
+//            index = tiExams.get(i);
+//            sol.set(index, currExam);            
         }
-          System.out.println("sol.size()="+sol.size());
-          System.out.println("solution.size()="+solution.getNumberOfVariables());
+//          System.out.println("sol.size()="+sol.size());
+//          System.out.println("solution.size()="+solution.getNumberOfVariables());
           
         for(int i=0;i<solution.getNumberOfVariables();i++)
         {
@@ -299,7 +375,8 @@ public class KempeChainInterchange<T> implements MutationOperator<IntegerMatrixS
 //            sol.add(new ArrayList((ArrayList)solution.getVariable(i)));
         }
         
-//        System.out.println("solution (after kinterchange)"+solution.getVariables());
+        System.out.println("solution (after kinterchange)"+solution.getVariables());
+        
 //        System.out.println("sol (after kinterchange)"+sol);
 //          System.out.println("Now checking for conflicts");
         for(int i=0; i<permutationLength-1;i++)
@@ -321,13 +398,13 @@ public class KempeChainInterchange<T> implements MutationOperator<IntegerMatrixS
                 {                    
                     if(slot1==slot2)
                     {                      
-                        System.out.println("In Solution: "+solution.getVariables()+",");                        
+//                        System.out.println("In Solution: "+solution.getVariables()+",");                        
                         System.out.println("Exam ("+i+")"+x+" @ timeslot "+slot1+" conflicts with exam ("+j+")"+y+" @ timeslot "+slot2);
                     }
                 }
             }                                                       
         }
-
+        System.out.println("......");
 //   System.out.println("Solution after KInterchange:"+solution.getVariables());
 //------------------------------<kempechain>----------------------------------->              
       }
