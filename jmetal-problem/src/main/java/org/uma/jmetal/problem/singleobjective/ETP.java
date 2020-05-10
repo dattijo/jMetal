@@ -766,7 +766,8 @@ public class ETP extends AbstractIntegerMatrixProblem
             {
                 return a.capacity < b.capacity ? -1 : a.capacity == b.capacity ? 0 : 1;
             }
-        }        
+        }    
+        
 //        System.out.println("ROOM ALLOCATION FOR NEW SOLUTION:");
         ArrayList<Exam> allocatedExams = new ArrayList();
         ArrayList<Exam> unAllocatedExams = new ArrayList();
@@ -788,6 +789,7 @@ public class ETP extends AbstractIntegerMatrixProblem
             
             ArrayList<Exam> tmpExamVector = new ArrayList();
             tmpExamVector.addAll(tmpT.examList);
+//            System.out.println("tmpT.examList.size():"+tmpT.examList.size());
             Collections.sort(tmpExamVector, new ExamComparator().reversed());  
 //            int myTotalEnrollment=0;
 //            for(int e =0; e<tmpExamVector.size();e++)
@@ -841,12 +843,13 @@ public class ETP extends AbstractIntegerMatrixProblem
         }
        
         
-        
+//        System.out.println("****");
 //        for(int e =0; e<examVector.size();e++)
 //        {
 //            //Exam tmpE = (Exam)tmpExamVector.get(e);
 //            System.out.println("Exam "+examVector.get(e).examId+" has been set to room "+examVector.get(e).room.roomId+" in timeslot "+examVector.get(e).timeslot.id);
 //        }
+//        System.out.println("****");
 
     }
     
@@ -1007,7 +1010,7 @@ public class ETP extends AbstractIntegerMatrixProblem
         solution.setObjective(0, (isFeasible)?((fitness1+fitness2)/studentMap.size())+fitness3:Integer.MAX_VALUE);
 //        solution.setObjective(0, (isFeasible)?((fitness1+fitness2)/studentMap.size())+fitness3:Double.POSITIVE_INFINITY);
 
-//        System.out.println("Solution Evaluated: "+solution.getObjective(0));//+" Variable: "+solution.getVariables());
+        System.out.println("Solution Evaluated: "+solution.getObjective(0));//+" Variable: "+solution.getVariables());
     } 
     
     public boolean evaluateConstraints(IntegerMatrixSolution<ArrayList<Integer>> solution)
