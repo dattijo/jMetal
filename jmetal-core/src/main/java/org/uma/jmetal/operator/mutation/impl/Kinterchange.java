@@ -1,12 +1,15 @@
 package org.uma.jmetal.operator.mutation.impl;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+
 import org.uma.jmetal.operator.mutation.MutationOperator;
+import org.uma.jmetal.problem.integermatrixproblem.IntegerMatrixProblem;
 import org.uma.jmetal.solution.integermatrixsolution.IntegerMatrixSolution;
 import org.uma.jmetal.util.checking.Check;
 import org.uma.jmetal.util.pseudorandom.BoundedRandomGenerator;
@@ -19,30 +22,51 @@ import org.uma.jmetal.util.pseudorandom.RandomGenerator;
  */
 public class Kinterchange <T> implements MutationOperator<IntegerMatrixSolution<T>>
 {
+    
+    class localSearchComparator implements Comparator<IntegerMatrixSolution> 
+    {
+        @Override
+            public int compare(IntegerMatrixSolution a, IntegerMatrixSolution b) 
+            {
+                return a.getObjective(0) < b.getObjective(0) ? -1 : a.getObjective(0) == b.getObjective(0) ? 0 : 1;
+            }
+    }  
+    
+    private int evaluations;
+    private int improvementRounds;
+    private int numberOfImprovements;
+    Comparator comparator;
+     
     private double mutationProbability;
     private RandomGenerator<Double> mutationRandomGenerator;
-    private BoundedRandomGenerator<Integer> positionRandomGenerator;
+    private BoundedRandomGenerator<Integer> positionRandomGenerator;  
+    private IntegerMatrixProblem problem;    
+    
     int[][]conflictMatrix;
     
-    public Kinterchange(double mutationProbability, int[][] conMat) 
+    public Kinterchange(double mutationProbability, int[][] conMat, IntegerMatrixProblem problem) 
     {
-        this(mutationProbability,() -> JMetalRandom.getInstance().nextDouble(), (a, b) -> JMetalRandom.getInstance().nextInt(a, b), conMat);
+        this(mutationProbability,() -> JMetalRandom.getInstance().nextDouble(), (a, b) -> JMetalRandom.getInstance().nextInt(a, b), conMat, problem);
     }
 
     /** Constructor */
-    public Kinterchange(double mutationProbability, RandomGenerator<Double> randomGenerator, int[][] conMat) 
+    public Kinterchange(double mutationProbability, RandomGenerator<Double> randomGenerator, int[][] conMat, IntegerMatrixProblem problem) 
     {
-        this(mutationProbability, randomGenerator, BoundedRandomGenerator.fromDoubleToInteger(randomGenerator),conMat);
+        this(mutationProbability, randomGenerator, BoundedRandomGenerator.fromDoubleToInteger(randomGenerator),conMat, problem);
     }
 
   /** Constructor */
-    public Kinterchange(double mutationProbability, RandomGenerator<Double> mutationRandomGenerator, BoundedRandomGenerator<Integer> positionRandomGenerator, int[][] conMat) 
+    public Kinterchange(double mutationProbability, RandomGenerator<Double> mutationRandomGenerator, BoundedRandomGenerator<Integer> positionRandomGenerator, int[][] conMat, IntegerMatrixProblem problem) 
     {
         Check.probabilityIsValid(mutationProbability);
         this.mutationProbability = mutationProbability;
         this.mutationRandomGenerator = mutationRandomGenerator;
         this.positionRandomGenerator = positionRandomGenerator;
-        this.conflictMatrix = conMat;        
+        this.conflictMatrix = conMat;
+        this.problem = problem;
+        this.numberOfImprovements = 0;
+        this.improvementRounds=1000;
+        this.comparator = new localSearchComparator();
     }
 
     @Override
@@ -60,11 +84,40 @@ public class Kinterchange <T> implements MutationOperator<IntegerMatrixSolution<
     public IntegerMatrixSolution<T> execute(IntegerMatrixSolution<T> solution) 
     {
         Check.isNotNull(solution);
-        doMutation(solution);    
-        return solution;
+        
+        int best;
+        evaluations = 0;
+
+        int rounds = improvementRounds;
+
+        int i = 0;
+        while (i < rounds) {
+          IntegerMatrixSolution mutatedSolution = doMutation((IntegerMatrixSolution)solution.copy());//mutationOperator.execute((S) solution.copy());
+
+          problem.evaluate(mutatedSolution);
+          evaluations++;
+
+          best = comparator.compare(mutatedSolution, solution);
+          if (best == -1) {
+            solution = mutatedSolution;
+            numberOfImprovements++;
+          } else if (best == 0) {
+            if (mutationRandomGenerator.getRandomValue() < 0.5) {
+              solution = mutatedSolution;
+            }
+          }
+          i++;
+        }      
+//        System.out.println("localSearchEvaluations="+evaluations);
+        return solution;//return (S) solution.copy();
+        ////////////////////////
+//        Check.isNotNull(solution);
+//        doMutation(solution); 
+//        return solution;
     }
     
-    public void doMutation(IntegerMatrixSolution<T> solution) 
+//    public void doMutation(IntegerMatrixSolution<T> solution) 
+    public IntegerMatrixSolution<T> doMutation(IntegerMatrixSolution<T> solution) 
     {
         //PICK TWO RANDOM EXAMS TO SWAP
         int solutionLength = solution.getNumberOfVariables();
@@ -216,5 +269,6 @@ public class Kinterchange <T> implements MutationOperator<IntegerMatrixSolution<
                 
             }
         }
+        return (IntegerMatrixSolution) solution.copy();
     }    
 }
