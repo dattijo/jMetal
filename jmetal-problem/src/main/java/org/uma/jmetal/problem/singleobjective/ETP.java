@@ -372,7 +372,7 @@ public class ETP extends AbstractIntegerMatrixProblem
     void readTimeSlots(StreamTokenizer tok, boolean fnd) throws IOException
     {
         //Read TimeSlots
-        System.out.println("Number of TimeSlots = "+numberOfTimeSlots);
+//        System.out.println("Number of TimeSlots = "+numberOfTimeSlots);
         fnd=false;
         int t,pCount=0;
         int day,pos,duration;
@@ -384,7 +384,7 @@ public class ETP extends AbstractIntegerMatrixProblem
                 tok.nextToken();
                 tok.nextToken();                
                 numberOfCampuses=(int)tok.nval;
-                System.out.println("Finished Reading TimeSlots.");
+//                System.out.println("Finished Reading TimeSlots.");
                 fnd = true ;
             }                
             else
@@ -417,7 +417,7 @@ public class ETP extends AbstractIntegerMatrixProblem
     void readCampuses(StreamTokenizer tok, boolean fnd) throws IOException
     {
         //Read Campuses
-        System.out.println("Number of Campuses = "+numberOfCampuses);
+//        System.out.println("Number of Campuses = "+numberOfCampuses);
         int t=0,cCount=0;
         fnd=false;
         double lon=0.0,lat=0.0;
@@ -428,7 +428,7 @@ public class ETP extends AbstractIntegerMatrixProblem
                 tok.nextToken();
                 tok.nextToken();              
                 numberOfFaculties=(int)tok.nval;
-                System.out.println("Finished Reading Campuses.");
+//                System.out.println("Finished Reading Campuses.");
                 fnd = true ;
             }
             else
@@ -441,7 +441,7 @@ public class ETP extends AbstractIntegerMatrixProblem
                     case StreamTokenizer.TT_NUMBER:
                         lon = tok.nval;tok.nextToken();tok.nextToken();
                         lat = tok.nval;tok.nextToken();
-                        System.out.println("Long: "+lon+"\nLat: "+lat);
+//                        System.out.println("Long: "+lon+"\nLat: "+lat);
                         addCampus(++cCount,lon,lat);
                         break;
                 }
@@ -452,7 +452,7 @@ public class ETP extends AbstractIntegerMatrixProblem
     void readFaculties(StreamTokenizer tok, boolean fnd) throws IOException
     {
         //Read Faculties
-        System.out.println("Number of Faculties = "+numberOfFaculties);
+//        System.out.println("Number of Faculties = "+numberOfFaculties);
         fnd=false;
         int t,camp=0,dToCamp=0,fCount=0;
         double lon=0.0,lat=0.0;
@@ -464,7 +464,7 @@ public class ETP extends AbstractIntegerMatrixProblem
                 tok.nextToken();
                 
                 numberOfRooms=(int)tok.nval;
-                System.out.println("Finished Reading Facuties.");
+//                System.out.println("Finished Reading Facuties.");
                 fnd = true ;
             }                
             else
@@ -499,7 +499,7 @@ public class ETP extends AbstractIntegerMatrixProblem
     void readRooms(StreamTokenizer tok, boolean fnd) throws IOException
     {
         //Read Rooms
-        System.out.println("Number of Rooms = "+numberOfRooms);
+//        System.out.println("Number of Rooms = "+numberOfRooms);
         fnd=false;
         int t,rCount=0,cap,fac,dToFac;
         while(!fnd) 
@@ -508,7 +508,7 @@ public class ETP extends AbstractIntegerMatrixProblem
             {
                 tok.nextToken();
                 tok.nextToken();                
-                System.out.println("Finished Reading Rooms.");
+//                System.out.println("Finished Reading Rooms.");
                 fnd = true ;
             }                
             else
@@ -1010,7 +1010,7 @@ public class ETP extends AbstractIntegerMatrixProblem
         solution.setObjective(0, (isFeasible)?((fitness1+fitness2)/studentMap.size())+fitness3:Integer.MAX_VALUE);
 //        solution.setObjective(0, (isFeasible)?((fitness1+fitness2)/studentMap.size())+fitness3:Double.POSITIVE_INFINITY);
 
-        System.out.println("Solution Evaluated: "+solution.getObjective(0));//+" Variable: "+solution.getVariables());
+//        System.out.println("Solution Evaluated: "+solution.getObjective(0));//+" Variable: "+solution.getVariables());
     } 
     
     public boolean evaluateConstraints(IntegerMatrixSolution<ArrayList<Integer>> solution)
