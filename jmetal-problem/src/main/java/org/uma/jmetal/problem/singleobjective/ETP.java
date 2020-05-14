@@ -36,9 +36,13 @@ public class ETP extends AbstractIntegerMatrixProblem
     NumberFormat formatter = new DecimalFormat("#0000.0000");     
     
     Map<Integer,Student> studentMap;
+//    Map<Integer,Integer> afterConstraintVector;
+//    Map<Integer,Integer> coincidenceConstraintVector;
+//    Map<Integer,Integer> exclusionConstraintVector;
     ArrayList<Exam> examVector;
+    ArrayList<Exam> exclusiveExamsVector;
     ArrayList<TimeSlot> timeslotVector;
-    ArrayList<Room> roomVector;
+    ArrayList<Room> roomVector;    
     ArrayList<Faculty> facultyVector;
     ArrayList<Campus> campusVector;
     ArrayList<ArrayList<Integer>> timetableSolution;
@@ -49,16 +53,29 @@ public class ETP extends AbstractIntegerMatrixProblem
     int numberOfFaculties;
     int numberOfRooms;
     int overallRoomCapacity;
+    int twoInARow;
+    int twoInADay;
+    int periodSpread;
+    int nonMixedDurations;
+    int numberOfLargestExams;
+    int numberOfLastPeriods;
+    int frontLoadPenalty;
 
     private int examDuration;
     
     int [][] conflictMatrix;
     double [][] roomToRoomDistanceMatrix;  
     
+    int [][] exclusionMatrix;// = new int[numberOfExams][numberOfExams];
+    int [][] coincidenceMatrix;// = new int[numberOfExams][numberOfExams];
+    int [][] afterMatrix;// = new int[numberOfExams][numberOfExams];
+    
     Graph<Integer, DefaultEdge> exGraph;
     Coloring coloredGraph;
     
     Random rand = new Random();
+    
+   
     
     class Student
     {
@@ -82,7 +99,8 @@ public class ETP extends AbstractIntegerMatrixProblem
         TimeSlot timeslot;
         Room room;//=new Room(Integer.MAX_VALUE,Integer.MAX_VALUE,Integer.MAX_VALUE,Integer.MAX_VALUE);//(int cap, int rId, int fId, int dToF)
         ArrayList<Student> enrollmentList = new ArrayList<>();
-        
+        boolean exlcusive=false;
+         
         Exam(int id, int duration)
         {
             examId=id;
@@ -110,7 +128,7 @@ public class ETP extends AbstractIntegerMatrixProblem
     {
         int capacity, roomId, distToFaculty;
         Faculty myFaculty;
-        List<Exam> examList = new ArrayList<>();
+        List<Exam> examList = new ArrayList<>();       
         
         Room(int cap, int rId, int fId, int dToF)
         {
@@ -188,15 +206,24 @@ public class ETP extends AbstractIntegerMatrixProblem
         
         studentMap = new HashMap<>();
         examVector = new ArrayList<>();
+        exclusiveExamsVector = new ArrayList<>();
         timeslotVector = new ArrayList();
         roomVector = new ArrayList();
         facultyVector = new ArrayList();
         campusVector = new ArrayList();
         timetableSolution = new ArrayList<ArrayList<Integer>>(); 
+        
+//        afterConstraintVector = new HashMap<>();
+//        coincidenceConstraintVector = new HashMap<>();
+//        exclusionConstraintVector = new HashMap<>();
          
         conflictMatrix = readProblem(problemFile);                
         
         roomToRoomDistanceMatrix = new double[numberOfRooms][numberOfRooms];
+        
+//        exclusionMatrix = new int[numberOfExams][numberOfExams];
+//        coincidenceMatrix = new int[numberOfExams][numberOfExams];
+//        afterMatrix = new int[numberOfExams][numberOfExams];
         
         generateDistanceMatrices();
         
@@ -238,8 +265,9 @@ public class ETP extends AbstractIntegerMatrixProblem
         readCampuses(token,found);
         readFaculties(token,found);
         readRooms(token,found);
-//        readConstraints(token,found);
-//        readWeightings(token,found);                
+        readPeriodConstraints(token,found);
+        readRoomConstraints(token,found);
+        readWeightings(token,found);                
         
         return conflictMatrix;
     }
@@ -538,86 +566,154 @@ public class ETP extends AbstractIntegerMatrixProblem
 //        }
     }
     
-     void readConstraints(StreamTokenizer tok, boolean fnd) throws IOException
+    void readPeriodConstraints(StreamTokenizer tok, boolean fnd) throws IOException
     {
-//        //Read PeriodHardConstraints
-//        fnd=false;int t;
-//        while(!fnd) 
-//        {
-//            if ((tok.sval != null) && ((tok.sval.compareTo("RoomHardConstraints") == 0)))
-//            {
-//                tok.nextToken();
-//                tok.nextToken();
-////                numberOfRooms=(int)tok.nval;
-////                System.out.println("Finished Reading PeriodHardConstraints.");
-//                fnd = true ;
-//            }                
-//            else
-//            {                                                   
-//                t = tok.nextToken();
-//                switch(t)
-//                {
-//                    case StreamTokenizer.TT_EOL:
-//                        break;
-//                    case StreamTokenizer.TT_NUMBER:                    
-////                        System.out.println("nextToken():"+tok.nval);
-//                        break;
-//                    case StreamTokenizer.TT_WORD:
-////                        System.out.println("nextToken():"+tok.sval);
-//                        break;
-//                }
-//            }
-//        }
-
-//        //Read RoomHardConstraints
-//        fnd=false;
-//        while(!fnd) 
-//        {
-//            if ((tok.sval != null) && ((tok.sval.compareTo("InstitutionalWeightings") == 0)))
-//            {
-//                tok.nextToken();
-//                tok.nextToken();
+        exclusionMatrix = new int[numberOfExams][numberOfExams];
+        coincidenceMatrix = new int[numberOfExams][numberOfExams];
+        afterMatrix = new int[numberOfExams][numberOfExams];        
+        
+        //Read PeriodHardConstraints
+        tok.wordChars('_', '_');
+        fnd=false;int t;
+        while(!fnd) 
+        {
+            if ((tok.sval != null) && ((tok.sval.compareTo("RoomHardConstraints") == 0)))
+            {
+                tok.nextToken();
+                tok.nextToken();
 //                numberOfRooms=(int)tok.nval;
-////                System.out.println("Finished Reading RoomHardConstraints.");
-//                fnd = true ;
-//            }                
-//            else
-//            {                                                   
-//                t = tok.nextToken();
-//                switch(t)
-//                {
-//                    case StreamTokenizer.TT_EOL:
-//                        break;
-//                    case StreamTokenizer.TT_NUMBER:                    
-////                        System.out.println("nextToken():"+tok.nval);
-//                        break;
+//                System.out.println("Finished Reading PeriodHardConstraints.");
+                fnd = true ;
+            }                
+            else
+            {                                                   
+                t = tok.nextToken();
+                int exam1=-1,exam2=-1;
+                String constraint="";
+                switch(t)
+                {
+                    case StreamTokenizer.TT_EOL:
+                        break;
+                    case StreamTokenizer.TT_NUMBER:                    
+                        //System.out.println("nextToken():"+tok.nval);
+                        exam1 = (int)tok.nval;//System.out.println("exam1:"+exam1);
+                        tok.nextToken();tok.nextToken();
+                        constraint = tok.sval;//System.out.println("constraint:"+constraint);
+                        tok.nextToken();tok.nextToken();
+                        exam2 = (int)tok.nval;//System.out.println("exam2:"+exam2);
+                        break;
 //                    case StreamTokenizer.TT_WORD:
-////                        System.out.println("nextToken():"+tok.sval);
+//                        //System.out.println("nextToken():"+tok.sval);
 //                        break;
-//                }
-//            }
+                }
+                
+                switch(constraint)
+                {
+                    case "EXCLUSION":
+//                        exclusionConstraintVector.put(exam1, exam2);
+                        exclusionMatrix[exam1][exam2]=1;
+                        break;
+                    case "EXAM_COINCIDENCE":
+//                        coincidenceConstraintVector.put(exam1, exam2);
+                        coincidenceMatrix[exam1][exam2]=1;
+                            break;
+                    case "AFTER":
+//                        afterConstraintVector.put(exam1, exam2);
+                        afterMatrix[exam1][exam2]=1;
+                        break;
+                }
+            }
+        }
+        
+//        System.out.println("exclusionMatrix:"+Arrays.deepToString(exclusionMatrix));
+//        System.out.println("coincidenceMatrix:"+Arrays.deepToString(coincidenceMatrix));
+//        System.out.println("afterMatrix:"+Arrays.deepToString(afterMatrix));
+    }
+    void readRoomConstraints(StreamTokenizer tok, boolean fnd) throws IOException
+    {
+        //Read RoomHardConstraints
+        fnd=false;int t;
+        while(!fnd) 
+        {
+            if ((tok.sval != null) && ((tok.sval.compareTo("InstitutionalWeightings") == 0)))
+            {
+                tok.nextToken();tok.nextToken();
+                fnd = true ;
+            }                
+            else
+            {                                                   
+                t = tok.nextToken();
+                switch(t)
+                {
+                    case StreamTokenizer.TT_EOL:
+                        break;
+                    case StreamTokenizer.TT_NUMBER:                                            
+//                        System.out.println("nextToken():"+tok.nval);
+                        examVector.get((int)tok.nval).exlcusive=true;
+                        exclusiveExamsVector.add(examVector.get((int)tok.nval));
+                        break;
+                }
+            }
+        }
+//        System.out.println("exclusiveExamsVector:");
+//        for(int i=0;i<examVector.size();i++)
+//        {
+//            System.out.println(examVector.get(i).examId+"--> "+examVector.get(i).exlcusive);
 //        }
     }
     
     void readWeightings(StreamTokenizer tok, boolean fnd) throws IOException
     {
-//    //Read InstitutionalWeightings
-//        int t = tok.nextToken();    //WATCHOUT
-//        while(t != StreamTokenizer.TT_EOF)
-//            {                               
-//                switch(t)
-//                {
-//                    case StreamTokenizer.TT_EOL:
-//                        break;
-//                    case StreamTokenizer.TT_NUMBER:                    
-////                        System.out.println("nextToken():"+tok.nval);
-//                        break;
-//                    case StreamTokenizer.TT_WORD:
-////                        System.out.println("nextToken():"+tok.sval);
-//                        break;
-//                }
-//                t= tok.nextToken();
-//            }
+        //Read InstitutionalWeightings
+        int t = tok.nextToken();    
+        while(t != StreamTokenizer.TT_EOF)
+        {                                         
+            switch(t)
+            {
+                case StreamTokenizer.TT_EOL:
+                    break;                
+                case StreamTokenizer.TT_WORD:
+                    System.out.println("nextToken():"+tok.sval);
+                    if(tok.sval.compareTo("TWOINAROW")==0)
+                    {
+                        tok.nextToken();tok.nextToken();
+                        twoInARow=(int)tok.nval;
+                    }
+                    else if(tok.sval.compareTo("TWOINADAY")==0)
+                    {
+                        tok.nextToken();tok.nextToken();
+                        twoInADay=(int)tok.nval;
+                    }
+                    else if(tok.sval.compareTo("PERIODSPREAD")==0)
+                    {
+                        tok.nextToken();tok.nextToken();
+                        periodSpread=(int)tok.nval;
+                    }
+                    else if(tok.sval.compareTo("NONMIXEDDURATIONS")==0)
+                    {
+                        tok.nextToken();tok.nextToken();
+                        nonMixedDurations=(int)tok.nval;
+                    }
+                    else if(tok.sval.compareTo("FRONTLOAD")==0)
+                    {
+                        tok.nextToken();tok.nextToken();
+                        numberOfLargestExams=(int)tok.nval;
+                        tok.nextToken();tok.nextToken();
+                        numberOfLastPeriods=(int)tok.nval;
+                        tok.nextToken();tok.nextToken();
+                        frontLoadPenalty=(int)tok.nval;
+                    }
+                    break;
+            }
+            t= tok.nextToken();
+        }
+        System.out.println("twoinarow:"+twoInARow);
+        System.out.println("twoinaday:"+twoInADay);
+        System.out.println("periodSpread:"+periodSpread);
+        System.out.println("nonMixedDurations:"+nonMixedDurations);
+        System.out.println("numberOfLargestExams:"+numberOfLargestExams);
+        System.out.println("numberOfLastPeriods:"+numberOfLastPeriods);
+        System.out.println("frontLoadPenalty:"+frontLoadPenalty);
     }  
     
     void generateDistanceMatrices() 
@@ -731,8 +827,8 @@ public class ETP extends AbstractIntegerMatrixProblem
 //          coloredGraph  = new LargestDegreeFirstColoring(exGraph).getColoring();
 //        coloredGraph  = new GreedyColoring(exGraph).getColoring();
 //        coloredGraph  = new BrownBacktrackColoring(exGraph).getColoring();
-        coloredGraph  = new RandomGreedyColoring(exGraph).getColoring();
-//        coloredGraph  = new SaturationDegreeColoring(exGraph).getColoring();
+//        coloredGraph  = new RandomGreedyColoring(exGraph).getColoring();
+        coloredGraph  = new SaturationDegreeColoring(exGraph).getColoring();
         
         for(int i=0;i<examVector.size();i++)
         {           
@@ -907,9 +1003,9 @@ public class ETP extends AbstractIntegerMatrixProblem
     {        
         boolean isFeasible=false;
         
-        double fitness1=0.0;
-        double fitness2=0.0;
-        int fitness3=0;
+        double fitness1=0.0;    //proximity cost
+        double fitness2=0.0;    //movement cost
+        int fitness3=0;         //room cost
         
         //proximity constraint
         outerloop:
@@ -1064,4 +1160,4 @@ public class ETP extends AbstractIntegerMatrixProblem
         ArrayList<Integer> list = new ArrayList<>(Arrays.asList(numberOfExams)); 
         return list ;
     }
-}
+}  
