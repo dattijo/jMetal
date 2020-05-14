@@ -56,13 +56,12 @@ public class GAETPRunner
         
     
         algorithm = new GeneticAlgorithmBuilder<>(problem, crossover, mutation)
-            .setPopulationSize(100)   //.setPopulationSize(100)
-            .setMaxEvaluations(250000) //.setMaxEvaluations(250000) 
+            .setPopulationSize(10)   //.setPopulationSize(100)
+            .setMaxEvaluations(10) //.setMaxEvaluations(250000) 
             .setSelectionOperator(selection)
             .build() ; 
 
-         AlgorithmRunner algorithmRunner = new AlgorithmRunner.Executor(algorithm)
-            .execute() ;
+         AlgorithmRunner algorithmRunner = new AlgorithmRunner.Executor(algorithm).execute() ;
     
         IntegerMatrixSolution<Integer> solution = algorithm.getResult() ;
     
