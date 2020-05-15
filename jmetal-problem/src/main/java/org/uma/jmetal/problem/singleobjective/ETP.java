@@ -74,9 +74,7 @@ public class ETP extends AbstractIntegerMatrixProblem
     Coloring coloredGraph;
     
     Random rand = new Random();
-    
-   
-    
+           
     class Student
     {
         int sId;
@@ -211,19 +209,11 @@ public class ETP extends AbstractIntegerMatrixProblem
         roomVector = new ArrayList();
         facultyVector = new ArrayList();
         campusVector = new ArrayList();
-        timetableSolution = new ArrayList<ArrayList<Integer>>(); 
-        
-//        afterConstraintVector = new HashMap<>();
-//        coincidenceConstraintVector = new HashMap<>();
-//        exclusionConstraintVector = new HashMap<>();
+        timetableSolution = new ArrayList<ArrayList<Integer>>();         
          
         conflictMatrix = readProblem(problemFile);                
         
-        roomToRoomDistanceMatrix = new double[numberOfRooms][numberOfRooms];
-        
-//        exclusionMatrix = new int[numberOfExams][numberOfExams];
-//        coincidenceMatrix = new int[numberOfExams][numberOfExams];
-//        afterMatrix = new int[numberOfExams][numberOfExams];
+        roomToRoomDistanceMatrix = new double[numberOfRooms][numberOfRooms];        
         
         generateDistanceMatrices();
         
@@ -232,8 +222,9 @@ public class ETP extends AbstractIntegerMatrixProblem
         
         setNumberOfVariables(numberOfExams);
         setNumberOfObjectives(1);        
-        //setNumberOfConstraints(1);
-        setName("ETP");        
+        this.setNumberOfConstraints(5);
+        setName("ETP");     
+        System.out.println("getNumberOfConstraints="+this.getNumberOfConstraints());
     }
     
     @Override
@@ -556,6 +547,7 @@ public class ETP extends AbstractIntegerMatrixProblem
             }
         }        
         
+        
 //        System.out.println("Room Vector");
 //        for(int i=0; i<roomVector.size();i++)
 //        {
@@ -673,7 +665,7 @@ public class ETP extends AbstractIntegerMatrixProblem
                 case StreamTokenizer.TT_EOL:
                     break;                
                 case StreamTokenizer.TT_WORD:
-                    System.out.println("nextToken():"+tok.sval);
+//                    System.out.println("nextToken():"+tok.sval);
                     if(tok.sval.compareTo("TWOINAROW")==0)
                     {
                         tok.nextToken();tok.nextToken();
@@ -707,13 +699,13 @@ public class ETP extends AbstractIntegerMatrixProblem
             }
             t= tok.nextToken();
         }
-        System.out.println("twoinarow:"+twoInARow);
-        System.out.println("twoinaday:"+twoInADay);
-        System.out.println("periodSpread:"+periodSpread);
-        System.out.println("nonMixedDurations:"+nonMixedDurations);
-        System.out.println("numberOfLargestExams:"+numberOfLargestExams);
-        System.out.println("numberOfLastPeriods:"+numberOfLastPeriods);
-        System.out.println("frontLoadPenalty:"+frontLoadPenalty);
+//        System.out.println("twoinarow:"+twoInARow);
+//        System.out.println("twoinaday:"+twoInADay);
+//        System.out.println("periodSpread:"+periodSpread);
+//        System.out.println("nonMixedDurations:"+nonMixedDurations);
+//        System.out.println("numberOfLargestExams:"+numberOfLargestExams);
+//        System.out.println("numberOfLastPeriods:"+numberOfLastPeriods);
+//        System.out.println("frontLoadPenalty:"+frontLoadPenalty);
     }  
     
     void generateDistanceMatrices() 
@@ -1003,6 +995,8 @@ public class ETP extends AbstractIntegerMatrixProblem
     {        
         boolean isFeasible=false;
         
+        int conflicts=0;
+        
         double fitness1=0.0;    //proximity cost
         double fitness2=0.0;    //movement cost
         int fitness3=0;         //room cost
@@ -1027,8 +1021,8 @@ public class ETP extends AbstractIntegerMatrixProblem
                 {
                     if(slot1==slot2)
                     {
-                        isFeasible=false;                        
-//                        System.out.println("Exam "+solution.getVariable(i)+" conflicts with exam "+solution.getVariable(j)+" @ timeslot "+slot1);
+                        isFeasible=false;
+                        conflicts++;
                         break outerloop;
                     }
                                         
@@ -1038,24 +1032,19 @@ public class ETP extends AbstractIntegerMatrixProblem
                     isFeasible=true;  
                 }
             }                                                       
-        }
+        }//System.out.println("fitness1="+fitness1);
         
         //movement constraint
-//        for (int s=1;s<=studentMap.size();s++) 
         for(Map.Entry<Integer, Student> currStudent : studentMap.entrySet())    
         {
-//            System.out.println("s = "+s);
-//            for(int e1=0;e1<studentMap.get(s).examList.size();e1++)
             for(int e1=0;e1<currStudent.getValue().examList.size();e1++)
             {   
-//                Exam cExam = examVector.get(studentMap.get(s).examList.get(e1).examId-1);
                 Exam cExam = examVector.get(currStudent.getValue().examList.get(e1).examId-1);
-//                for(int e2=e1;e2<studentMap.get(s).examList.size();e2++)
+
                 for(int e2=e1;e2<currStudent.getValue().examList.size();e2++)
                 {
                     if(e1==e2)continue;
                     Exam nExam = examVector.get(currStudent.getValue().examList.get(e2).examId-1);
-//                    Exam nExam = examVector.get(studentMap.get(s).examList.get(e2).examId-1);                 
                     
                     if(cExam.room==null)continue;int rm1 = cExam.room.roomId;
                     if(nExam.room==null)continue;int rm2 = nExam.room.roomId;
@@ -1063,90 +1052,174 @@ public class ETP extends AbstractIntegerMatrixProblem
                     fitness2+=roomToRoomDistanceMatrix[rm1-1][rm2-1];
                 }
             }
-        }
+        }//System.out.println("fitness2="+fitness2);
         
-        //room under-utilization constraint
-        int roomUtilization=0;
-        int totalRoomCapacity=0;
-//        ArrayList sol = (ArrayList)solution;
-//        sol.forEach((currExam)->
-//        {
-//            ArrayList x = (ArrayList)currExam;
-//            //ArrayList<Integer> x = currExam;
-//            
-//            for(int j =0;j<x.size();j++)
-//            {
-//                if((int)x.get(j)==0)continue;
-//                System.out.println("Evaluating..."+x.get(j));
-//                totalRoomCapacity+=roomVector.get((int)x.get(j-1)).capacity
-//                totalRoomCapacity+=roomVector.get(((int)x.get(j-1))).capacity;
-//                roomUtilization+=roomVector.get(x.get(j)-1)
-//                        .examList.get(i).studentsCount;
-//            }
-//        });
-//        for(int i =0;i<solution.getNumberOfVariables();i++)
-//        {
-//            ArrayList<Integer> x = solution.getVariable(i);
-//            
-//            for(int j =0;j<x.size();j++)
-//            {
-//                if(x.get(j)==0)continue;
-//                System.out.println("Exam "+i+". in room "+x.get(j)+" has "+roomVector.get(x.get(j)-1).examList.size()+" exams");
-//                totalRoomCapacity+=roomVector.get(x.get(j)-1).capacity;
-//                
-//                roomUtilization+=roomVector.get(x.get(j)-1)
-//                        .examList.get(i).studentsCount;
-//            }
-//        } 
-        fitness3 = totalRoomCapacity-roomUtilization;
-               
+         //room under-utilization constraint        
+        int totalStudents=0;
+        int totalRoomCapacity=0;        
+
+        for(int i =0;i<solution.getNumberOfVariables();i++)
+        {
+            ArrayList<Integer> exam = solution.getVariable(i);
+            
+            for(int j =0;j<exam.size();j++)
+            {                
+                if(exam.get(j)==0)continue;
+                int room = exam.get(j);
+                
+                if(room!=-1)
+                {                                     
+                    totalRoomCapacity=examVector.get(i).studentsCount;
+                    totalStudents=examVector.get(i).room.capacity;                    
+                }                                             
+            }
+        } 
+        fitness3 = totalRoomCapacity-totalStudents;//System.out.println("fitness3="+fitness3);
+
+        
+        this.evaluateConstraints(solution);
 //        solution.setObjective(0, fitness1);
 //        solution.setObjective(0, fitness2);
 //        solution.setObjective(0, fitness3);
-        solution.setObjective(0, (isFeasible)?((fitness1+fitness2)/studentMap.size())+fitness3:Integer.MAX_VALUE);
-//        solution.setObjective(0, (isFeasible)?((fitness1+fitness2)/studentMap.size())+fitness3:Double.POSITIVE_INFINITY);
-
-//        System.out.println("Solution Evaluated: "+solution.getObjective(0));//+" Variable: "+solution.getVariables());
+//        solution.setObjective(0, (isFeasible)?((fitness1+fitness2)/studentMap.size())+fitness3:Integer.MAX_VALUE);
+        solution.setObjective(0, (isFeasible)?((fitness1+fitness2)/studentMap.size()):Integer.MAX_VALUE);
+        
+        //System.out.println("solution.getObjectives()="+solution.getObjective(0));
+        System.out.println("solution="+solution);
     } 
     
-    public boolean evaluateConstraints(IntegerMatrixSolution<ArrayList<Integer>> solution)
-    {                
-////        int clash=0;
-//        int P = solution.getNumberOfVariables();
-//        
-//        for(int i=0; i<numberOfExams-1;i++)
-//        {          
-//            for(int j=0; j<numberOfExams-1;j++)
-//            {
-//                int x = solution.getVariable(i);
-//                int y = solution.getVariable(j);
-//                for(int p=0;p<P-1;p++)
-//                {                    
-//                    if(*conflictMatrix[x][y])
-//                    return false;
-//                }
-//            }
-//        } 
-//        
-//        
-//        boolean seatingViolation=false;
-//        for(int i=0; i<numberOfExams-1;i++)
-//        {
-//            for(int p=0;p<P-1;p++)
-//            {
-//                if(ttable[i][p]*examEnrollment[i]<S)
-//                {
-//                    seatingViolation=true;
-//                }
-//            }
-//        }
-//
-//        
-//        
-//        solution.setConstraint(0, violationCount);  
-//        System.out.println("Constraint = "+violationCount);
-//        return clash;
-        return false;
+    public void evaluateConstraints(IntegerMatrixSolution<ArrayList<Integer>> solution)
+    {  
+        //conflicts
+        int conflicts=0;
+        for(int i=0; i<solution.getNumberOfVariables();i++)
+        {                      
+            for(int j=0; j<solution.getNumberOfVariables();j++)
+            {
+                if(i==j)continue;
+                
+                int slot1=0,slot2=0;                                  
+                
+                ArrayList<Integer> x = solution.getVariable(i);
+                while(x.get(slot1)==0)slot1++;            
+                
+                ArrayList<Integer> y = solution.getVariable(j);
+                while(y.get(slot2)==0)slot2++; 
+      
+                if(conflictMatrix[i][j]!=0)
+                {
+                    if(slot1==slot2)conflicts++;                     
+                }
+            }                                                       
+        }//System.out.println("conflicts="+conflicts);
+        
+        //room under-utilization constraint
+        int roomOccupancyViolation=0;
+        int examCapacity=0;
+        int roomCapacity=0;
+
+        for(int i =0;i<solution.getNumberOfVariables();i++)
+        {
+            ArrayList<Integer> exam = solution.getVariable(i);
+            
+            for(int j =0;j<exam.size();j++)
+            {                
+                if(exam.get(j)==0)continue;
+                int room = exam.get(j);
+                if(room!=-1)
+                {                                     
+                    examCapacity=examVector.get(i).studentsCount;
+                    roomCapacity=examVector.get(i).room.capacity;
+                    if(examCapacity>roomCapacity)
+                    {
+                        roomOccupancyViolation++;                        
+                    }                    
+                }
+            }
+        }//System.out.println("roomOccupancyViolation="+roomOccupancyViolation);
+        
+        //Timeslot Utilisation
+        int timeslotUtilisationViolation=0;
+        int timeslotDuration=0;
+        int examDuration=0;
+        for(int i =0;i<solution.getNumberOfVariables();i++)
+        {
+            ArrayList<Integer> exam = solution.getVariable(i);
+            
+            for(int j =0;j<exam.size();j++)
+            {  
+                if(exam.get(j)==0)continue;
+                timeslotDuration = timeslotVector.get(j).duration;
+                examDuration = examVector.get(i).examDuration;
+                if(timeslotDuration<examDuration)
+                {
+                    timeslotUtilisationViolation++;
+                }
+            }
+        }//System.out.println("timeslotUtilisationViolation="+timeslotUtilisationViolation);
+        
+        //PeriodOrdering
+        int periodOrderingViolation=0;
+        for(int i=0;i<solution.getNumberOfVariables();i++)
+        {
+            for(int j=0;j<solution.getNumberOfVariables();j++)
+            {
+                int k,l;
+                for(k=0;k<solution.getVariable(i).size();k++)
+                {
+                    if(solution.getVariable(i).get(k)!=0)break;                        
+                }
+                for(l=0;l<solution.getVariable(i).size();l++)
+                {
+                    if(solution.getVariable(j).get(l)!=0)break;                        
+                }
+                    
+                if(exclusionMatrix[i][j]!=0)if(k==l)periodOrderingViolation++;               
+                if(afterMatrix[i][j]!=0) if(k<l)periodOrderingViolation++; 
+                if(coincidenceMatrix[i][j]!=0)
+                {
+                    if(conflictMatrix[i][j]!=0)break;                                                            
+                    if(k!=l)periodOrderingViolation++;
+                }                                              
+            }
+        }//System.out.println("periodOrderingViolation="+periodOrderingViolation);
+        
+        //RoomConstraints
+        int roomConstraintViolation=0;   
+        for(int i =0; i<exclusiveExamsVector.size();i++)
+        {
+            int exclusiveExam = exclusiveExamsVector.get(i).examId-1;
+            int k,exclusiveRoom=-1;
+            for(k=0;k<solution.getVariable(exclusiveExam).size();k++)
+            {
+                if(solution.getVariable(exclusiveExam).get(k)!=0)
+                {
+                    exclusiveRoom = solution.getVariable(exclusiveExam).get(k);
+                    break;
+                }                
+            } 
+            
+            for(int j=0;j<solution.getNumberOfVariables();j++)
+            {
+                if(j==exclusiveExam)continue;
+                int r,room=-1;
+                for(r=0;r<solution.getVariable(j).size();r++)
+                {
+                    if(solution.getVariable(j).get(r)!=0)
+                    {
+                        room = solution.getVariable(j).get(r);
+                        break;
+                    }                
+                }
+                if(exclusiveRoom==room)roomConstraintViolation++;
+            }
+        }//System.out.println("roomConstraintViolation="+roomConstraintViolation);
+                
+        solution.setAttribute(0, conflicts);
+        solution.setAttribute(1, roomOccupancyViolation);
+        solution.setAttribute(2, timeslotUtilisationViolation);
+        solution.setAttribute(3, periodOrderingViolation);   
+        solution.setAttribute(4, roomConstraintViolation);
     }
     
     @Override
