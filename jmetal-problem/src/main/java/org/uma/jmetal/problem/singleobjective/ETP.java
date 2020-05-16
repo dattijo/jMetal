@@ -53,13 +53,14 @@ public class ETP extends AbstractIntegerMatrixProblem
     int numberOfFaculties;
     int numberOfRooms;
     int overallRoomCapacity;
-    int twoInARow;
-    int twoInADay;
-    int periodSpread;
-    int nonMixedDurations;
+    int twoInARowPenalty;
+    int twoInADayPenalty;
+    int periodSpreadPenalty;
+    int nonMixedDurationsPenalty;
     int numberOfLargestExams;
     int numberOfLastPeriods;
     int frontLoadPenalty;
+    int spreadGap;
 
     private int examDuration;
     
@@ -74,6 +75,7 @@ public class ETP extends AbstractIntegerMatrixProblem
     Coloring coloredGraph;
     
     Random rand = new Random();
+    
            
     class Student
     {
@@ -209,7 +211,8 @@ public class ETP extends AbstractIntegerMatrixProblem
         roomVector = new ArrayList();
         facultyVector = new ArrayList();
         campusVector = new ArrayList();
-        timetableSolution = new ArrayList<ArrayList<Integer>>();         
+        timetableSolution = new ArrayList<ArrayList<Integer>>(); 
+        spreadGap=0;        
          
         conflictMatrix = readProblem(problemFile);                
         
@@ -669,22 +672,22 @@ public class ETP extends AbstractIntegerMatrixProblem
                     if(tok.sval.compareTo("TWOINAROW")==0)
                     {
                         tok.nextToken();tok.nextToken();
-                        twoInARow=(int)tok.nval;
+                        twoInARowPenalty=(int)tok.nval;
                     }
                     else if(tok.sval.compareTo("TWOINADAY")==0)
                     {
                         tok.nextToken();tok.nextToken();
-                        twoInADay=(int)tok.nval;
+                        twoInADayPenalty=(int)tok.nval;
                     }
                     else if(tok.sval.compareTo("PERIODSPREAD")==0)
                     {
                         tok.nextToken();tok.nextToken();
-                        periodSpread=(int)tok.nval;
+                        periodSpreadPenalty=(int)tok.nval;
                     }
                     else if(tok.sval.compareTo("NONMIXEDDURATIONS")==0)
                     {
                         tok.nextToken();tok.nextToken();
-                        nonMixedDurations=(int)tok.nval;
+                        nonMixedDurationsPenalty=(int)tok.nval;
                     }
                     else if(tok.sval.compareTo("FRONTLOAD")==0)
                     {
@@ -830,10 +833,10 @@ public class ETP extends AbstractIntegerMatrixProblem
             availableTimeSlots.get(allocatedTime).addExam(examVector.get(i));
         }
         
-        for(int t=0;t<availableTimeSlots.size();t++)
-        {
+//        for(int t=0;t<availableTimeSlots.size();t++)
+//        {
 //            System.out.println("Timeslot "+availableTimeSlots.get(t).id+" has "+availableTimeSlots.get(t).examList.size()+" exams");
-        }
+//        }
     }
     
     void allocateRooms(ArrayList rooms)
@@ -1034,6 +1037,8 @@ public class ETP extends AbstractIntegerMatrixProblem
             }                                                       
         }//System.out.println("fitness1="+fitness1);
         
+//////////////////////////////////////////////////////////////////////////////////////////////////////  
+//NO REFERENCE TO SOLUTION
         //movement constraint
         for(Map.Entry<Integer, Student> currStudent : studentMap.entrySet())    
         {
@@ -1053,7 +1058,9 @@ public class ETP extends AbstractIntegerMatrixProblem
                 }
             }
         }//System.out.println("fitness2="+fitness2);
-        
+//NO REFERENCE TO SOLUTION
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
          //room under-utilization constraint        
         int totalStudents=0;
         int totalRoomCapacity=0;        
@@ -1076,6 +1083,36 @@ public class ETP extends AbstractIntegerMatrixProblem
         } 
         fitness3 = totalRoomCapacity-totalStudents;//System.out.println("fitness3="+fitness3);
 
+        //TwoInARow,TwoInADay,PeriodSpread
+        TimeSlot slot1,slot2;
+        int twoInARowCount=0;
+        int twoInADayCount=0;
+        int periodSpreadCount=0;
+        for(int i=0; i < studentMap.size();i++)
+        {
+            for(int j=0;j<studentMap.get(i).examList.size();j++)
+            {
+               for(int k=0;k<studentMap.get(i).examList.size();k++)
+               {
+                   if(j==k)continue;
+                   
+                   slot1 = timeslotVector.get(getTimeslot(solution.getVariable(studentMap.get(i).examList.get(j).examId))-1);
+                   slot2 = timeslotVector.get(getTimeslot(solution.getVariable(studentMap.get(i).examList.get(k).examId))-1);
+                   if(slot1.day==slot2.day)
+                   {
+                       if(Math.abs(slot1.pos-slot2.pos)==1)twoInARowCount++;
+                       else if(Math.abs(slot1.pos-slot2.pos)>1)twoInADayCount++;                                             
+                   }
+                   if(Math.abs(slot1.pos-slot2.pos)<spreadGap)periodSpreadCount++;                   
+               }
+            }
+        }
+        
+        //NonMixedDuration
+        for(int i=0;i<timeslotVector.size();i++)
+        {
+            
+        }
         
         this.evaluateConstraints(solution);
 //        solution.setObjective(0, fitness1);
@@ -1126,10 +1163,13 @@ public class ETP extends AbstractIntegerMatrixProblem
             {                
                 if(exam.get(j)==0)continue;
                 int room = exam.get(j);
+                
                 if(room!=-1)
                 {                                     
                     examCapacity=examVector.get(i).studentsCount;
-                    roomCapacity=examVector.get(i).room.capacity;
+                    roomCapacity = roomVector.get(room-1).capacity;
+                    
+                    //roomCapacity=examVector.get(i).room.capacity;
                     if(examCapacity>roomCapacity)
                     {
                         roomOccupancyViolation++;                        
@@ -1232,5 +1272,23 @@ public class ETP extends AbstractIntegerMatrixProblem
     public ArrayList<Integer> getListOfExamsPerVariable() {
         ArrayList<Integer> list = new ArrayList<>(Arrays.asList(numberOfExams)); 
         return list ;
+    }
+    
+    public int getTimeslot(ArrayList<Integer> exam)
+    {
+        for(int i=0; i<exam.size();i++)
+        {
+            if(exam.get(i)!=0)return i;
+        }
+        return -1;
+    }
+    
+    public int getRoom(ArrayList<Integer> exam)
+    {
+        for(int i=0; i<exam.size();i++)
+        {
+            if(exam.get(i)!=0)return exam.get(i);
+        }
+        return -1;
     }
 }  
