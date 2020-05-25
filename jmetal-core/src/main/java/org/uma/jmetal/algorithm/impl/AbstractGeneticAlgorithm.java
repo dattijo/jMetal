@@ -72,12 +72,12 @@ public abstract class AbstractGeneticAlgorithm<S, Result> extends AbstractEvolut
   @Override
   protected List<S> selection(List<S> population) {
     List<S> matingPopulation = new ArrayList<>(population.size());
+
     for (int i = 0; i < getMaxPopulationSize(); i++) {
       S solution = selectionOperator.execute(population);
       matingPopulation.add(solution);
     }
-
-    return matingPopulation;
+    return matingPopulation;       
   }
 
   /**
@@ -105,9 +105,15 @@ public abstract class AbstractGeneticAlgorithm<S, Result> extends AbstractEvolut
 
       List<S> offspring = crossoverOperator.execute(parents);
 
-      for(S s: offspring){
-        mutationOperator.execute(s);
-        offspringPopulation.add(s);
+      for(S s: offspring){           
+////////////////////////////////////////////////////////////////aadatti
+          offspringPopulation.add(mutationOperator.execute(s));
+////////////////////////////////////////////////////////////////aadatti
+
+////////////////////////////////////////////////////original
+//        mutationOperator.execute(s);
+//        offspringPopulation.add(s);
+////////////////////////////////////////////////////original
       }
     }
     return offspringPopulation;
