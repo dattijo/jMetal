@@ -49,25 +49,27 @@ public class GAETPRunner
 
         double mutationProbability = 0.9 ;   
 
-        mutation = new Kinterchange(mutationProbability, conflictMatrix, problem);
+        mutation = new Kinterchange(mutationProbability, conflictMatrix, problem);          
 
         selection = new BinaryTournamentSelection<IntegerMatrixSolution<Integer>>(
                     new RankingAndCrowdingDistanceComparator<IntegerMatrixSolution<Integer>>());            
         
     
         algorithm = new GeneticAlgorithmBuilder<>(problem, crossover, mutation)
-            .setPopulationSize(10)   //.setPopulationSize(100)
-            .setMaxEvaluations(10) //.setMaxEvaluations(250000) 
+            .setPopulationSize(100)   //.setPopulationSize(100)
+            .setMaxEvaluations(200) //.setMaxEvaluations(250000) 
             .setSelectionOperator(selection)
+            .setVariant(GeneticAlgorithmBuilder.GeneticAlgorithmVariant.GENERATIONAL)
             .build() ; 
 
          AlgorithmRunner algorithmRunner = new AlgorithmRunner.Executor(algorithm).execute() ;
     
         IntegerMatrixSolution<Integer> solution = algorithm.getResult() ;
-    
+        
         List<IntegerMatrixSolution<Integer>> population = new ArrayList<>(1) ;
-        population.add(solution) ;
 
+        population.add(solution) ;
+        
         long computingTime = algorithmRunner.getComputingTime() ;
 
         new SolutionListOutput(population)
