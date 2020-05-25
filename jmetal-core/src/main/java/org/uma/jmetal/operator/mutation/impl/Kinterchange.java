@@ -84,7 +84,7 @@ public class Kinterchange <T> implements MutationOperator<IntegerMatrixSolution<
     public IntegerMatrixSolution<T> execute(IntegerMatrixSolution<T> solution) 
     {
         Check.isNotNull(solution);
-        
+
         int best;
         evaluations = 0;
 
@@ -92,7 +92,7 @@ public class Kinterchange <T> implements MutationOperator<IntegerMatrixSolution<
 
         int i = 0;
         while (i < rounds) {
-          IntegerMatrixSolution mutatedSolution = doMutation((IntegerMatrixSolution)solution.copy());//mutationOperator.execute((S) solution.copy());
+          IntegerMatrixSolution mutatedSolution = doMutation((IntegerMatrixSolution)solution.copy());
 
           problem.evaluate(mutatedSolution);
           evaluations++;
@@ -108,15 +108,10 @@ public class Kinterchange <T> implements MutationOperator<IntegerMatrixSolution<
           }
           i++;
         }      
-//        System.out.println("localSearchEvaluations="+evaluations);
-        return solution;//return (S) solution.copy();
-        ////////////////////////
-//        Check.isNotNull(solution);
-//        doMutation(solution); 
-//        return solution;
+ 
+        return solution;
     }
     
-//    public void doMutation(IntegerMatrixSolution<T> solution) 
     public IntegerMatrixSolution<T> doMutation(IntegerMatrixSolution<T> solution) 
     {
         //PICK TWO RANDOM EXAMS TO SWAP
@@ -127,9 +122,7 @@ public class Kinterchange <T> implements MutationOperator<IntegerMatrixSolution<
         {
             solutionMap.put(i, new ArrayList((ArrayList)solution.getVariable(i)));
         }
-//        System.out.println("solutionMap before kinterchange:"+solutionMap);
-        
-        
+                
         if ((solutionLength != 0) && (solutionLength != 1)) 
         {
             if (mutationRandomGenerator.getRandomValue() < mutationProbability) 
@@ -261,12 +254,7 @@ public class Kinterchange <T> implements MutationOperator<IntegerMatrixSolution<
                 for(int i=0;i<solutionLength;i++)
                 {
                     solution.setVariable(i, (T)solutionMap.get(i));
-                }
-//                System.out.println("solutionMap after kinterchange:"+solutionMap);
-//                System.out.println("solution after kinterchage:"+solution.getVariables());
-                    
-                //CROSSCHECK CONFLICT 
-                
+                }                                    
             }
         }
         return (IntegerMatrixSolution) solution.copy();
