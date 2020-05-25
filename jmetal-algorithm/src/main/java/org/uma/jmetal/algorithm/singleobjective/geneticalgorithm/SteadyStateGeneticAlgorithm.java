@@ -62,9 +62,15 @@ public class SteadyStateGeneticAlgorithm<S extends Solution<?>> extends Abstract
     parents.add(matingPopulation.get(1));
 
     List<S> offspring = crossoverOperator.execute(parents);
-    mutationOperator.execute(offspring.get(0));
 
-    offspringPopulation.add(offspring.get(0));
+/////////////////////////////////////////////////////////////////original
+//    mutationOperator.execute(offspring.get(0));
+//    offspringPopulation.add(offspring.get(0));      
+/////////////////////////////////////////////////////////////////original
+
+/////////////////////////////////////////////////////////////////aadatti
+    offspringPopulation.add(mutationOperator.execute(offspring.get(0)));
+/////////////////////////////////////////////////////////////////aadatti    
     return offspringPopulation;
   }
 
@@ -88,6 +94,14 @@ public class SteadyStateGeneticAlgorithm<S extends Solution<?>> extends Abstract
 
   @Override public S getResult() {
     Collections.sort(getPopulation(), comparator) ;
+    
+//    //////////////////////////////////////////////aadatti
+//    for(int i=0;i<population.size();i++)        //aadatti
+//    {                                           //aadatti
+//        System.out.println(population.get(i).getObjective(0));  //aadatti   
+//    }                                           //aadatti
+//    //////////////////////////////////////////////aadatti  
+    
     return getPopulation().get(0);
   }
 
