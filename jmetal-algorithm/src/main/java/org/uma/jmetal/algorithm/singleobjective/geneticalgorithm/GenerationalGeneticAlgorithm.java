@@ -13,6 +13,7 @@ import org.uma.jmetal.util.evaluator.SolutionListEvaluator;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import org.uma.jmetal.util.comparator.ObjectiveComparator.Ordering;
 
 /**
  * @author Antonio J. Nebro <antonio@lcc.uma.es>
@@ -39,8 +40,8 @@ public class GenerationalGeneticAlgorithm<S extends Solution<?>> extends Abstrac
     this.mutationOperator = mutationOperator;
     this.selectionOperator = selectionOperator;
 
-    this.evaluator = evaluator;
-
+    this.evaluator = evaluator;    
+    
     comparator = new ObjectiveComparator<S>(0);
     
     
@@ -50,7 +51,7 @@ public class GenerationalGeneticAlgorithm<S extends Solution<?>> extends Abstrac
     return (evaluations >= maxEvaluations);
   }
 
-  @Override protected List<S> replacement(List<S> population, List<S> offspringPopulation) {
+  @Override protected List<S> replacement(List<S> population, List<S> offspringPopulation) {     
     Collections.sort(population, comparator);
     offspringPopulation.add(population.get(0));
     offspringPopulation.add(population.get(1));
@@ -68,12 +69,13 @@ public class GenerationalGeneticAlgorithm<S extends Solution<?>> extends Abstrac
   }
 
   @Override public S getResult() {    
-    //////////////////////////////////////////////aadatti
-//    for(int i=0;i<population.size();i++)        //aadatti
-//    {                                           //aadatti
-//        System.out.println(population.get(i));  //aadatti   
-//    }                                           //aadatti
-    //////////////////////////////////////////////aadatti   
+//    ////////////////////////////////////////////////////////////////aadatti
+//      System.out.println("\n\nLAST POPULATION:");                 //aadatti   
+//    for(int i=0;i<population.size();i++)                          //aadatti
+//    {                                                             //aadatti
+//        System.out.println(population.get(i).getObjective(0));    //aadatti   
+//    }                                                             //aadatti
+//    ////////////////////////////////////////////////////////////////aadatti   
     Collections.sort(getPopulation(), comparator) ;
     return getPopulation().get(0);
   }
