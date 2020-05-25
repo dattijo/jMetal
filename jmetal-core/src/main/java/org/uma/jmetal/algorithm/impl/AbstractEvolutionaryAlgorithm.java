@@ -53,12 +53,12 @@ public abstract class AbstractEvolutionaryAlgorithm<S, R>  implements Algorithm<
     List<S> offspringPopulation;
     List<S> matingPopulation;
 
-    population = createInitialPopulation();
+    population = createInitialPopulation();      
     population = evaluatePopulation(population);
     initProgress();
     while (!isStoppingConditionReached()) {
       matingPopulation = selection(population);
-      offspringPopulation = reproduction(matingPopulation);
+      offspringPopulation = reproduction(matingPopulation);        
       offspringPopulation = evaluatePopulation(offspringPopulation);
       population = replacement(population, offspringPopulation);
       updateProgress();
