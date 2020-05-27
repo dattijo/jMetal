@@ -56,8 +56,8 @@ public class GAETPRunner
         
     
         algorithm = new GeneticAlgorithmBuilder<>(problem, crossover, mutation)
-            .setPopulationSize(100)   //.setPopulationSize(100)
-            .setMaxEvaluations(200) //.setMaxEvaluations(250000) 
+            .setPopulationSize(100)      //.setPopulationSize(100)
+            .setMaxEvaluations(1000)      //.setMaxEvaluations(250000) 
             .setSelectionOperator(selection)
             .setVariant(GeneticAlgorithmBuilder.GeneticAlgorithmVariant.GENERATIONAL)
             .build() ; 
