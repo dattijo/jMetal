@@ -27,6 +27,8 @@ import org.jgrapht.graph.SimpleGraph;
 import org.uma.jmetal.problem.integermatrixproblem.impl.AbstractIntegerMatrixProblem;
 import org.uma.jmetal.solution.integermatrixsolution.IntegerMatrixSolution;
 import org.uma.jmetal.solution.integermatrixsolution.impl.DefaultIntegerMatrixSolution;
+import org.uma.jmetal.util.pseudorandom.BoundedRandomGenerator;
+import org.uma.jmetal.util.pseudorandom.JMetalRandom;
 
 /**
  *
@@ -798,81 +800,163 @@ public class ETP extends AbstractIntegerMatrixProblem {
             }
         }
 
-//        System.out.println("ROOM ALLOCATION FOR NEW SOLUTION:");
+        System.out.println("\n\nROOM ALLOCATION FOR NEW SOLUTION:");
+        Map<Integer,ArrayList> freeTimeslotRoomMap = new HashMap();
         ArrayList<Exam> allocatedExams = new ArrayList();
         ArrayList<Exam> unAllocatedExams = new ArrayList();
+        ArrayList<Exam> mainUnAllocatedExams = new ArrayList();
+        ArrayList<Room> tmpRoomVector = new ArrayList();
+        
+        tmpRoomVector.addAll(roomVector);
+        Collections.sort(tmpRoomVector, new RoomComparator().reversed());
+        for(int r =0; r<tmpRoomVector.size();r++){
+            System.out.println("Room "+tmpRoomVector.get(r).roomId+". Capacity = "+tmpRoomVector.get(r).capacity);
+        } 
+        
         for (int t = 0; t < timeslotVector.size(); t++) {
-            if (timeslotVector.get(t).examList.size() <= 0) {
-                continue;
-            }
-            ArrayList<Room> tmpRoomVector = new ArrayList();
-
+//            if (timeslotVector.get(t).examList.size() <= 0) {
+//                continue;
+//            }            
+            tmpRoomVector.clear();
             tmpRoomVector.addAll(roomVector);
-            Collections.sort(tmpRoomVector, new RoomComparator());
-
-//            for(int r =0; r<tmpRoomVector.size();r++)
-//            {
-//                System.out.println("Room "+tmpRoomVector.get(r).roomId+". Capacity = "+tmpRoomVector.get(r).capacity);
-//            } 
+            Collections.sort(tmpRoomVector, new RoomComparator().reversed());
+                       
             TimeSlot tmpT = (TimeSlot) timeslotVector.get(t);
-//            System.out.println("Now in Timeslot "+tmpT.id+" having "+tmpT.examList.size()+" exams.");
+            System.out.println("\nNow in Timeslot "+tmpT.id+" having "+tmpT.examList.size()+" exams.");
 
             ArrayList<Exam> tmpExamVector = new ArrayList();
             tmpExamVector.addAll(tmpT.examList);
-//            System.out.println("tmpT.examList.size():"+tmpT.examList.size());
             Collections.sort(tmpExamVector, new ExamComparator().reversed());
-//            int myTotalEnrollment=0;
-//            for(int e =0; e<tmpExamVector.size();e++)
-//            {
-//                myTotalEnrollment+=tmpExamVector.get(e).studentsCount;
-//                System.out.println("Exam "+tmpExamVector.get(e).examId+". Enrollment = "+tmpExamVector.get(e).studentsCount);                
-//            } 
-//            System.out.println("overallRoomCapacity ("+overallRoomCapacity+") > = "+"("+myTotalEnrollment+") myTotalEnrollment?"+(overallRoomCapacity>=myTotalEnrollment));
+            for(int e =0; e<tmpExamVector.size();e++)
+            {
+                System.out.println("Exam "+tmpExamVector.get(e).examId+". Enrollment = "+tmpExamVector.get(e).studentsCount);                
+            } 
 
             int e = 0;
-            while (e < tmpExamVector.size()) {
-//                System.out.println("Allocating rooms to "+tmpExamVector.size()+" exams...");
+            while (e < tmpExamVector.size()) {                
+                System.out.println("Allocating rooms to "+tmpExamVector.size()+" exams...");
                 int r = 0;
 
-//                System.out.println("Now in Exam "+tmpExamVector.get(e).examId);
+                System.out.println("Now in Exam "+tmpExamVector.get(e).examId);
                 while (tmpRoomVector.size() > 0 && r < tmpRoomVector.size() && (tmpExamVector.size() > 0) && e < tmpExamVector.size()) {
-//                    System.out.println("\nSearching for room to exam "+tmpExamVector.get(0).examId);
+                    System.out.println("\nSearching for room to exam "+tmpExamVector.get(0).examId);
                     Exam tmpE = tmpExamVector.get(e);
                     Room tmpR = tmpRoomVector.get(r);
 
                     if (tmpE.studentsCount <= tmpR.capacity) {
                         tmpE.setRoom(tmpR);
-                        allocatedExams.add(tmpE);
-//                        System.out.println("Exam "+tmpE.examId+" has been set to room "+tmpR.roomId);
-                        examVector.get(tmpE.examId - 1).setRoom(tmpR);
-//                        System.out.println("Removing exam "+tmpE.examId);
-                        tmpExamVector.remove(tmpE);
-//                        System.out.println("tmpExamVector now has "+tmpExamVector.size()+" exams");
-//                        System.out.println("Removing timeslot "+tmpR.roomId);
-                        tmpRoomVector.remove(tmpR);
-//                        System.out.println("tmpRoomVector now has "+tmpRoomVector.size()+" rooms");
-//                        e++;
-                    } else {
-                        r++;
-                    }
+                        allocatedExams.add(tmpE);System.out.println("Exam "+tmpE.examId+" has been set to room "+tmpR.roomId);
+                        examVector.get(tmpE.examId - 1).setRoom(tmpR);System.out.println("Removing exam "+tmpE.examId);
+                        tmpExamVector.remove(tmpE);System.out.println("tmpExamVector now has "+tmpExamVector.size()+" exams");
+//                                                  System.out.println("Removing room "+tmpR.roomId);
+                        tmpRoomVector.remove(tmpR);System.out.println("tmpRoomVector now has "+tmpRoomVector.size()+" rooms");
+                    } else r++;                                                           
                 }
+                
+//                if(tmpRoomVector.size()>0){
+//                        System.out.print("For timeslot "+t+", freeRoom(s) =");
+//                        int freeSpace = 0;
+//                        for(int i=0;i<tmpRoomVector.size();i++)
+//                        {
+//                            System.out.print(tmpRoomVector.get(i).roomId+", ");
+//                            int cap = tmpRoomVector.get(i).capacity;
+////                            System.out.print("room size :"+cap);
+//                            freeSpace+=cap;                            
+//                        }
+//                        System.out.println("total free Space= "+freeSpace);
+//                }                                
+                
                 if (r >= tmpRoomVector.size() && e < tmpExamVector.size()) {
 //                    System.out.print("...skipping exam");//+tmpExamVector.get(e).examId+"\n");// for exam "+tmpExamVector.get(0).examId+" with "+tmpExamVector.get(0).studentsCount);
                     unAllocatedExams.add(tmpExamVector.get(e));
 //                    System.out.println("Allocated = "+allocatedExams.size());                    
 //                    System.out.println("Unallocated = "+unAllocatedExams.size());
                     e++;
+                    
+                } 
+                
+            }
+            
+            System.out.println("****tmpRoomVector.size() ="+tmpRoomVector.size()); 
+            ArrayList tmpFreeRooms = new ArrayList(tmpRoomVector);
+            if(tmpRoomVector.size()>0){
+                freeTimeslotRoomMap.put(t, tmpFreeRooms);
+            }
+            System.out.println("\nfreeTimeslotRoomMap: ");
+            for(Map.Entry<Integer, ArrayList> entry : freeTimeslotRoomMap.entrySet()){
+                System.out.println("Timeslot "+timeslotVector.get(entry.getKey()).id+" Free Rooms:");
+                for(int i =0;i<entry.getValue().size();i++){
+                    Room rm = (Room)entry.getValue().get(i);
+                    System.out.print(rm.roomId+", ");
                 }
+                System.out.println();
+            }                        
+            
+//            int currFreeStuds=0;
+            if(unAllocatedExams.size()>0){
+                System.out.print("unAllocatedExams= ");
+                for(int i=0;i<unAllocatedExams.size();i++)
+                {
+                    System.out.print(unAllocatedExams.get(i).examId+", ");
+//                    int studs = unAllocatedExams.get(i).studentsCount;
+//                    System.out.print(": no. of studs = "+studs);
+//                    currFreeStuds+=studs;
+                }
+//                System.out.println("total unallocated studs = "+currFreeStuds);
+            }
+            
+            mainUnAllocatedExams.addAll(unAllocatedExams);
+            unAllocatedExams.clear();
+        }
+//        while(mainUnAllocatedExams.size()>0){
+        ArrayList<Exam> tmpUnallocated = new ArrayList(mainUnAllocatedExams);
+        for(int i=0;i<mainUnAllocatedExams.size();i++){ 
+            
+            ArrayList availableTimeslots = new ArrayList(freeTimeslotRoomMap.keySet());
+            for(int t=0;t<availableTimeslots.size();t++){
+                //System.out.println("t="+t+". "+"freeTimeslotRoomMap.get(t)="+freeTimeslotRoomMap.get(availableTimeslots.get(t)));
+                ArrayList<Room> availableRooms = new ArrayList(freeTimeslotRoomMap.get(availableTimeslots.get(t)));                
+                BoundedRandomGenerator<Integer> rand = (a, b) -> JMetalRandom.getInstance().nextInt(a, b);                                
+                if(tmpUnallocated.size()<=0)break;
+                Exam ex = tmpUnallocated.get(0);
+                int r = rand.getRandomValue(0, availableRooms.size()-1);                    
+                System.out.println("availableRooms.get("+r+")="+ availableRooms.get(r).roomId);
+                int rId = availableRooms.get(r).roomId;
+                Room rm = roomVector.get(rId-1);
+                while(ex.studentsCount>rm.capacity){
+                    rm = roomVector.get(availableRooms.get(rand.getRandomValue(0, availableRooms.size()-1)).roomId-1);                    
+                }
+                examVector.get(ex.examId-1).setRoom(rm);
+                examVector.get(ex.examId-1).setTimeSlot(timeslotVector.get((int)availableTimeslots.get(t)-1));
+                
+                System.out.println("Exam "+ex.examId+" has been set to *random* room "+rm.roomId+" @ Timeslot "+availableTimeslots.get(t));
+                tmpUnallocated.remove(0);
+                mainUnAllocatedExams.remove(ex);
             }
         }
-
-//        System.out.println("****");
-//        for(int e =0; e<examVector.size();e++)
-//        {
-//            //Exam tmpE = (Exam)tmpExamVector.get(e);
-//            System.out.println("Exam "+examVector.get(e).examId+" has been set to room "+examVector.get(e).room.roomId+" in timeslot "+examVector.get(e).timeslot.id);
+        
+        System.out.println("\n****ROOM ALLOCATION SUMMARY*****");
+        for(int e =0; e<examVector.size();e++)
+        {
+            //Exam tmpE = (Exam)tmpExamVector.get(e);
+            if(!mainUnAllocatedExams.contains(examVector.get(e)))
+            {
+                System.out.println("Exam "+examVector.get(e).examId
+                    +" has been set to room "+examVector.get(e).room.roomId                                            
+                    +" in timeslot "+examVector.get(e).timeslot.id);
+            }            
+        }
+//        int freeStuds=0;
+//        if(mainUnAllocatedExams.size()>0){
+//            System.out.print("mainUnAllocatedExams= ");
+//            for(int i=0;i<mainUnAllocatedExams.size();i++)
+//            {
+//                System.out.print(mainUnAllocatedExams.get(i).examId+", ");
+//                freeStuds+=mainUnAllocatedExams.get(i).studentsCount;
+//            }
+//            System.out.println("freeStuds= "+freeStuds);
 //        }
-//        System.out.println("****");
+        
     }
 
     ArrayList<ArrayList<Integer>> generateTimeTableMatrix() {
@@ -924,25 +1008,26 @@ public class ETP extends AbstractIntegerMatrixProblem {
 
     @Override
     public void evaluate(IntegerMatrixSolution<ArrayList<Integer>> solution) {
-        int proximityFitness = evaluateProximityFitness(solution);
-        double movementFitness = evaluateMovementFitness(solution);                     //movement cost
-        int roomUtilizationFitness = evaluateRoomUtilizationFitness(solution);          //room cost
+        double proximityFitness = evaluateProximityFitness(solution);
+        double movementFitness = evaluateMovementFitness(solution);                 //movement cost
+        double roomUtilizationFitness = evaluateRoomUtilizationFitness(solution);   //room cost
+        
+        double compositeFitness = proximityFitness+movementFitness+roomUtilizationFitness;
         int itc2007Fitness = evaluateITC2007Fitness(solution);
 
         this.evaluateConstraints(solution);
 //        solution.setObjective(0, proximityFitness);
-//        solution.setObjective(0, movementFitness);        //same thruOUT
-//        solution.setObjective(0, roomUtilizationFitness); //same thruOUT
-        solution.setObjective(0, itc2007Fitness);
+//        solution.setObjective(0, movementFitness);        
+//        solution.setObjective(0, roomUtilizationFitness); 
+        solution.setObjective(0, compositeFitness);
+//        solution.setObjective(0, itc2007Fitness);
 
-//        solution.setObjective(0, (isFeasible)?((fitness1+fitness2)/studentMap.size())+fitness3:Integer.MAX_VALUE);
-//        solution.setObjective(0, (isFeasible)?((proximityFitness+movementFitness)/studentMap.size()):Integer.MAX_VALUE);
         System.out.println("solution.getObjective()=" + solution.getObjective(0));
     }
 
-    public int evaluateProximityFitness(IntegerMatrixSolution<ArrayList<Integer>> solution) {
+    public double evaluateProximityFitness(IntegerMatrixSolution<ArrayList<Integer>> solution) {
         //proximity constraint 
-        int proximity = 0;
+        double proximity = 0.0;
         for (int i = 0; i < solution.getNumberOfVariables(); i++) {
             int slot1 = getTimeslot(solution.getVariable(i));
             for (int j = 0; j < solution.getNumberOfVariables(); j++) {
@@ -957,58 +1042,65 @@ public class ETP extends AbstractIntegerMatrixProblem {
                 }
             }
         }
-        return proximity;
+        return proximity/studentMap.size();
     }
 
     public double evaluateMovementFitness(IntegerMatrixSolution<ArrayList<Integer>> solution) {
         //movement constraint
         double movementCost = 0.0;
+//        System.out.println("\n\nEVALUATING MOVEMENT COST for solution:");
+//        System.out.println(solution.getVariables());
         for (Map.Entry<Integer, Student> currStudent : studentMap.entrySet()) {
-            for (int e1 = 0; e1 < currStudent.getValue().examList.size(); e1++) {
+//            System.out.println("Student="+currStudent.getKey());
+            for (int e1 = 0; e1 < currStudent.getValue().examList.size(); e1++) {                
                 Exam cExam = examVector.get(currStudent.getValue().examList.get(e1).examId - 1);
-
+                
                 for (int e2 = e1; e2 < currStudent.getValue().examList.size(); e2++) {
                     if (e1 == e2) {
                         continue;
-                    }
+                    }                    
                     Exam nExam = examVector.get(currStudent.getValue().examList.get(e2).examId - 1);
-
 //                    if(cExam.room==null)continue;int rm1 = cExam.room.roomId;
 //                    if(nExam.room==null)continue;int rm2 = nExam.room.roomId;
 //                    
 //                    fitness2+=roomToRoomDistanceMatrix[rm1-1][rm2-1];
-                    int room1 = getRoom(solution.getVariable(cExam.examId - 1)) - 1;
-                    int room2 = getRoom(solution.getVariable(nExam.examId - 1)) - 1;
+                    int room1 = getRoom(solution.getVariable(cExam.examId - 1))-1;
+                    int room2 = getRoom(solution.getVariable(nExam.examId - 1))-1;
                     if (room1 > 0 && room2 > 0) {
-                        movementCost += roomToRoomDistanceMatrix[room1][room2];
+//                        System.out.println("room="+room1+"\nroom2="+room2);
+                        double currCost= roomToRoomDistanceMatrix[room1][room2];
+//                        System.out.println("Movement cost btw exam "+cExam.examId+" in room "+(room1+1)+" to exam "+nExam.examId
+//                            +" in room "+(room2+1)+" is "+currCost);
+                        movementCost += currCost;
+                        
+                        
                     }
                 }
             }
         }
-        return movementCost;
+        return movementCost/studentMap.size();
     }
 
-    public int evaluateRoomUtilizationFitness(IntegerMatrixSolution<ArrayList<Integer>> solution) {
-        //room under-utilization constraint         
-        int totalStudents = 0;
-        int totalRoomCapacity = 0;
+    public double evaluateRoomUtilizationFitness(IntegerMatrixSolution<ArrayList<Integer>> solution) {
+        //room under-utilization and over-utilization constraint 
+        int roomCap=0,studSize=0;
+        double underUtilization = 0.0;
+        double overUtilization = 0.0;        
 
         for (int i = 0; i < solution.getNumberOfVariables(); i++) {
-            ArrayList<Integer> exam = solution.getVariable(i);
-
-            for (int j = 0; j < exam.size(); j++) {
-                if (exam.get(j) == 0) {
-                    continue;
-                }
-                int room = exam.get(j);
-
-                if (room != -1) {
-                    totalRoomCapacity = examVector.get(i).studentsCount;
-                    totalStudents = examVector.get(i).room.capacity;
-                }
+            ArrayList<Integer> exam = solution.getVariable(i);                                      
+            int room = getRoom(exam);
+            if(room!=-1)roomCap = roomVector.get(room-1).capacity;
+            studSize = examVector.get(i).studentsCount;
+            if (room != -1) {       
+                if(studSize<roomCap)underUtilization += ( roomCap - studSize);                                    
+                else if(studSize>roomCap)overUtilization += (studSize - roomCap);                                    
+            }
+            else{               
+                overUtilization+=studSize;
             }
         }
-        return totalRoomCapacity - totalStudents;
+        return (underUtilization+overUtilization)/roomVector.size();
     }
 
     public int evaluateITC2007Fitness(IntegerMatrixSolution<ArrayList<Integer>> solution) {
@@ -1026,7 +1118,6 @@ public class ETP extends AbstractIntegerMatrixProblem {
                     }
 
                     slot1 = timeslotVector.get(getTimeslot(solution.getVariable(currStudent.getValue().examList.get(j).examId - 1)));
-//                   System.out.println("..."+getTimeslot(solution.getVariable(currStudent.getValue().examList.get(k).examId-1)));
                     slot2 = timeslotVector.get(getTimeslot(solution.getVariable(currStudent.getValue().examList.get(k).examId - 1)));
                     if (slot1.day == slot2.day) {
                         if (Math.abs(slot1.pos - slot2.pos) == 1) {
