@@ -1,118 +1,146 @@
 package org.uma.jmetal.operator.mutation.impl;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import org.uma.jmetal.operator.mutation.MutationOperator;
 import org.uma.jmetal.solution.integermatrixsolution.IntegerMatrixSolution;
-//import org.uma.jmetal.solution.permutationsolution.PermutationSolution;
 import org.uma.jmetal.util.checking.Check;
 import org.uma.jmetal.util.pseudorandom.BoundedRandomGenerator;
 import org.uma.jmetal.util.pseudorandom.JMetalRandom;
 import org.uma.jmetal.util.pseudorandom.RandomGenerator;
 
 /**
- * This class implements a timeslot swap mutation. The solution type of the solution must be IntegerMatrix.
  *
- * @author Antonio J. Nebro <antonio@lcc.uma.es>
- * @author Juan J. Durillo
+ * @author aadatti
  */
-@SuppressWarnings("serial")
-public class TimeslotSwapMutation<T> implements MutationOperator<IntegerMatrixSolution<T>> {
-  private double mutationProbability;
-  private RandomGenerator<Double> mutationRandomGenerator;
-  private BoundedRandomGenerator<Integer> positionRandomGenerator;
-  private int[][] conflictMatrix;
+public class TimeslotSwapMutation<T> implements MutationOperator<IntegerMatrixSolution<T>> {   
+   
+    Comparator comparator;
 
-  /** Constructor */
-  public TimeslotSwapMutation(double mutationProbability, int[][] conMat) {
-    this(
-        mutationProbability,
-        () -> JMetalRandom.getInstance().nextDouble(),
-        (a, b) -> JMetalRandom.getInstance().nextInt(a, b),conMat);
-  }
+    private double mutationProbability;
+    private RandomGenerator<Double> mutationRandomGenerator;
+    private BoundedRandomGenerator<Integer> positionRandomGenerator;
 
-  /** Constructor */
-  public TimeslotSwapMutation(
-      double mutationProbability, RandomGenerator<Double> randomGenerator,int [][] conMat) {
-    this(
-        mutationProbability,
-        randomGenerator,
-        BoundedRandomGenerator.fromDoubleToInteger(randomGenerator),conMat);
-  }
+    int numberOfTimeslots;    
+    ArrayList<Integer> freeTimeslots;
+    ArrayList<Integer> usedTimeslots;
 
-  /** Constructor */
-  public TimeslotSwapMutation(
-      double mutationProbability,
-      RandomGenerator<Double> mutationRandomGenerator,
-      BoundedRandomGenerator<Integer> positionRandomGenerator, int[][]conMat) {
-    Check.probabilityIsValid(mutationProbability);
-    this.mutationProbability = mutationProbability;
-    this.mutationRandomGenerator = mutationRandomGenerator;
-    this.positionRandomGenerator = positionRandomGenerator;
-    this.conflictMatrix = conMat;
-  }
+    public TimeslotSwapMutation(double mutationProbability, int timeslots) {
+        this(mutationProbability, () -> JMetalRandom.getInstance().nextDouble(), 
+                (a, b) -> JMetalRandom.getInstance().nextInt(a, b), timeslots);
+    }
 
-  /* Getters */
-  @Override
-  public double getMutationProbability() {
-    return mutationProbability;
-  }
+    /**
+     * Constructor
+     * @param mutationProbability
+     * @param mutationRandomGenerator
+     * @param positionRandomGenerator
+     * @param timeslots
+     * @param swap
+     */
+    public TimeslotSwapMutation(double mutationProbability, RandomGenerator<Double> mutationRandomGenerator,
+            BoundedRandomGenerator<Integer> positionRandomGenerator, int timeslots) {
+        Check.probabilityIsValid(mutationProbability);
+        this.mutationProbability = mutationProbability;
+        this.mutationRandomGenerator = mutationRandomGenerator;
+        this.positionRandomGenerator = positionRandomGenerator;
+        this.numberOfTimeslots = timeslots;         
+    }
 
-  /* Setters */
-  public void setMutationProbability(double mutationProbability) {
-    this.mutationProbability = mutationProbability;
-  }
+    @Override
+    public double getMutationProbability() {
+        return mutationProbability;
+    }
 
-  /* Execute() method */
-  @Override
-  public IntegerMatrixSolution<T> execute(IntegerMatrixSolution<T> solution) {
-    Check.isNotNull(solution);
-    doMutation(solution);
-     
-    return solution;
-  }
+    public void setMutationProbability(double mutationProbability) {
+        this.mutationProbability = mutationProbability;
+    }
 
-  /** Performs the operation */
-  public void doMutation(IntegerMatrixSolution<T> solution) {
-     
-      int permutationLength;
-    permutationLength = solution.getNumberOfVariables();
+    @Override
+    public IntegerMatrixSolution<T> execute(IntegerMatrixSolution<T> solution) {
+        Check.isNotNull(solution);        
+        return doMutation((IntegerMatrixSolution) solution);
+    }
 
-    if ((permutationLength != 0) && (permutationLength != 1)) {
-      if (mutationRandomGenerator.getRandomValue() < mutationProbability) {
-        int pos1 = positionRandomGenerator.getRandomValue(0, permutationLength - 1);
-        int pos2 = positionRandomGenerator.getRandomValue(0, permutationLength - 1);
+    public IntegerMatrixSolution<T> doMutation(IntegerMatrixSolution<T> solution) {       
+        
+        int solutionLength = solution.getNumberOfVariables();
 
-        while (pos1 == pos2) {
-          if (pos1 == (permutationLength - 1))
-            pos2 = positionRandomGenerator.getRandomValue(0, permutationLength - 2);
-          else pos2 = positionRandomGenerator.getRandomValue(pos1, permutationLength - 1);
-        }
-//-------------------------------<original>------------------------------------>        
-//        System.out.println("Swapping "+solution.getVariable(pos1)+" with "+solution.getVariable(pos2));
-        T temp = solution.getVariable(pos1);
-        solution.setVariable(pos1, solution.getVariable(pos2));
-        solution.setVariable(pos2, temp);
-//-------------------------------<original>------------------------------------>
+        if ((solutionLength != 0) && (solutionLength != 1)) {
+            
+            if (mutationRandomGenerator.getRandomValue() < mutationProbability) {   
+//                System.out.println("\n\nNEW SOLUTION");
+                getFreeTimeslots(solution); 
+//                                                    
+                int randTimeslotIndex1 = usedTimeslots.get(positionRandomGenerator.getRandomValue(0, usedTimeslots.size() - 1));                              
+                int randTimeslotIndex2 = usedTimeslots.get(positionRandomGenerator.getRandomValue(0, usedTimeslots.size() - 1));
 
-//-------------------------------<aadatti>------------------------------------->
-//        PermutationSolution<T> tmpSol = solution;///aadatti
-//        T temp = tmpSol.getVariable(pos1);
-//        tmpSol.setVariable(pos1, tmpSol.getVariable(pos2));
-//        tmpSol.setVariable(pos2, temp);
-//        
-//        if(tmpSol.getObjective(0)!=Integer.MAX_VALUE)
-//        {
-//            T tmp = solution.getVariable(pos1);
-//            solution.setVariable(pos1, solution.getVariable(pos2));
-//            solution.setVariable(pos2, tmp);
-//        }
-//        else
-//        {
-//            System.out.println("Discarding infeasible solution:"+tmpSol);
-//        }
-//-------------------------------<aadatti>------------------------------------->        
-      }
+                while (randTimeslotIndex1 == randTimeslotIndex2) {
+                    if (randTimeslotIndex1 == (solutionLength - 1)) {
+                        randTimeslotIndex2 = usedTimeslots.get(positionRandomGenerator.getRandomValue(0, usedTimeslots.size() - 2));
+                    } else {
+                        randTimeslotIndex2 = usedTimeslots.get(positionRandomGenerator.getRandomValue(0, usedTimeslots.size() - 1));
+                    }
+                }   
+                
+                IntegerMatrixSolution tmpSolution = (IntegerMatrixSolution) solution.copy();                
+                ArrayList exam;
+                for(int i=0;i<solution.getNumberOfVariables();i++){
+                    exam = (ArrayList)solution.getVariable(i);
+                    if(getTimeslot(exam)==randTimeslotIndex1){
+//                            System.out.println("Moving exam "+i+" from timelsot "+randTimeslotIndex1+" to "+randTimeslotIndex2);
+                        int room = getRoom(exam);
+                        exam.set(randTimeslotIndex1, 0);
+                        exam.set(randTimeslotIndex2, room);
+                        tmpSolution.setVariable(i, exam);
+                    }
+                    else if(getTimeslot(exam)==randTimeslotIndex2){
+//                            System.out.println("Moving exam "+i+" from timelsot "+randTimeslotIndex2+" to "+randTimeslotIndex1);
+                        int room = getRoom(exam);
+                        exam.set(randTimeslotIndex2, 0);
+                        exam.set(randTimeslotIndex1, room);
+                        tmpSolution.setVariable(i, exam);
+                    }                                        
+                }                          
+                solution = tmpSolution;
+            }
+        }        
+        return solution;
     }
     
-  }
+    public int getTimeslot(ArrayList<Integer> exam){
+        for (int i = 0; i < exam.size(); i++){
+            if (exam.get(i) != 0) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public int getRoom(ArrayList<Integer> exam) {
+        for (int i = 0; i < exam.size(); i++) {
+            if (exam.get(i) != 0) {
+                return exam.get(i);
+            }
+        }
+        return -1;
+    }
+    
+    void getFreeTimeslots(IntegerMatrixSolution solution){
+        usedTimeslots = new ArrayList();
+        freeTimeslots = new ArrayList();
+        
+        for(int i=0; i<solution.getNumberOfVariables();i++){
+            int timeslot = getTimeslot((ArrayList)solution.getVariable(i));
+            if(!usedTimeslots.contains(timeslot)){
+                usedTimeslots.add(timeslot);
+            }
+        }
+        
+        for(int i=0;i<numberOfTimeslots;i++){
+            if(!usedTimeslots.contains(i)){
+                freeTimeslots.add(i);
+            }
+        }         
+    } 
 }
