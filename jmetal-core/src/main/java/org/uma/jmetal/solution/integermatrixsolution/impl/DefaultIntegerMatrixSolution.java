@@ -31,11 +31,11 @@ import org.uma.jmetal.solution.integermatrixsolution.IntegerMatrixSolution;
 
 /**
  *
- * @author PhDLab
+ * @author aadatti
  */
 @SuppressWarnings("serial")
 public class DefaultIntegerMatrixSolution extends AbstractSolution<ArrayList<Integer>> 
-    implements IntegerMatrixSolution<ArrayList<Integer>> 
+    implements IntegerMatrixSolution<ArrayList<Integer>>, Cloneable 
 {
     ArrayList<Integer> examsPerTimeslot;
     
