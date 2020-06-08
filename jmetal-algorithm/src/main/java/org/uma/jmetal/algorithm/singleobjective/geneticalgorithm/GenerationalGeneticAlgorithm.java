@@ -13,6 +13,7 @@ import org.uma.jmetal.util.evaluator.SolutionListEvaluator;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import org.uma.jmetal.operator.localsearch.LocalSearchOperator;
 import org.uma.jmetal.util.comparator.ObjectiveComparator.Ordering;
 
 /**
@@ -29,9 +30,15 @@ public class GenerationalGeneticAlgorithm<S extends Solution<?>> extends Abstrac
   /**
    * Constructor
    */
-  public GenerationalGeneticAlgorithm(Problem<S> problem, int maxEvaluations, int populationSize,
+  
+  //original
+//  public GenerationalGeneticAlgorithm(Problem<S> problem, int maxEvaluations, int populationSize,
+//                                      CrossoverOperator<S> crossoverOperator, MutationOperator<S> mutationOperator,
+//                                      SelectionOperator<List<S>, S> selectionOperator, SolutionListEvaluator<S> evaluator) {
+      public GenerationalGeneticAlgorithm(Problem<S> problem, int maxEvaluations, int populationSize,
                                       CrossoverOperator<S> crossoverOperator, MutationOperator<S> mutationOperator,
-                                      SelectionOperator<List<S>, S> selectionOperator, SolutionListEvaluator<S> evaluator) {
+                                      SelectionOperator<List<S>, S> selectionOperator, SolutionListEvaluator<S> evaluator,
+                                      LocalSearchOperator<S> localSearchOperator) {
     super(problem);
     this.maxEvaluations = maxEvaluations;
     this.setMaxPopulationSize(populationSize);
@@ -39,7 +46,7 @@ public class GenerationalGeneticAlgorithm<S extends Solution<?>> extends Abstrac
     this.crossoverOperator = crossoverOperator;
     this.mutationOperator = mutationOperator;
     this.selectionOperator = selectionOperator;
-
+    this.localSearchOperator = localSearchOperator;
     this.evaluator = evaluator;    
     
     comparator = new ObjectiveComparator<S>(0);
@@ -68,15 +75,8 @@ public class GenerationalGeneticAlgorithm<S extends Solution<?>> extends Abstrac
     return population;
   }
 
-  @Override public S getResult() {    
-//    ////////////////////////////////////////////////////////////////aadatti
-//      System.out.println("\n\nLAST POPULATION:");                 //aadatti   
-//    for(int i=0;i<population.size();i++)                          //aadatti
-//    {                                                             //aadatti
-//        System.out.println(population.get(i).getObjective(0));    //aadatti   
-//    }                                                             //aadatti
-//    ////////////////////////////////////////////////////////////////aadatti   
-    Collections.sort(getPopulation(), comparator) ;
+  @Override public S getResult() {     
+    Collections.sort(getPopulation(), comparator);
     return getPopulation().get(0);
   }
 
