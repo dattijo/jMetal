@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Map;
 import org.uma.jmetal.operator.mutation.MutationOperator;
-import org.uma.jmetal.problem.integermatrixproblem.IntegerMatrixProblem;
 import org.uma.jmetal.solution.integermatrixsolution.IntegerMatrixSolution;
 import org.uma.jmetal.util.checking.Check;
 import org.uma.jmetal.util.pseudorandom.BoundedRandomGenerator;
@@ -12,41 +11,27 @@ import org.uma.jmetal.util.pseudorandom.JMetalRandom;
 import org.uma.jmetal.util.pseudorandom.RandomGenerator;
 
 /**
- * Mutation operator that moves a random exam to a random feasible room within the same timeslot
+ * Mutation operator that moves a random exam to a random feasible room within the same time slot
  * @author aadatti
  * @param <T> Solution type 
  */
-public class RoomMove<T> implements MutationOperator<IntegerMatrixSolution<T>>{    
-  
-    class localSearchComparator implements Comparator<IntegerMatrixSolution> 
-    {
-        @Override
-            public int compare(IntegerMatrixSolution a, IntegerMatrixSolution b) 
-            {
-                return a.getObjective(0) < b.getObjective(0) ? -1 : a.getObjective(0) == b.getObjective(0) ? 0 : 1;
-            }
-    }  
-    
-    private int evaluations;
-    private int improvementRounds;
-    private int numberOfImprovements;
+public class RoomMove<T> implements MutationOperator<IntegerMatrixSolution<T>>{       
+        
     Comparator comparator;
      
     private double mutationProbability;
     private RandomGenerator<Double> mutationRandomGenerator;
     private BoundedRandomGenerator<Integer> positionRandomGenerator;  
-    private IntegerMatrixProblem problem;    
     
     Map<Integer, ArrayList<Integer>> availableRooms;
     int[] roomCapacities;
-    int[] examEnrollments;
+    int[] examEnrollments;  
     
-    public RoomMove(double mutationProbability, int[] roomCapacities, 
-            int[] examEnrollments, IntegerMatrixProblem problem) {        
+    public RoomMove(double mutationProbability, int[] roomCapacities, int[] examEnrollments) {        
         this(mutationProbability,
                 () -> JMetalRandom.getInstance().nextDouble(), 
                 (a, b) -> JMetalRandom.getInstance().nextInt(a, b), 
-                roomCapacities, examEnrollments, problem);
+                roomCapacities, examEnrollments);
     }
 
     /** Constructor
@@ -55,11 +40,11 @@ public class RoomMove<T> implements MutationOperator<IntegerMatrixSolution<T>>{
      * @param availableRooms
      * @param problem */
     public RoomMove(double mutationProbability, RandomGenerator<Double> randomGenerator, 
-            int[] roomCapacities, int[] examEnrollments,IntegerMatrixProblem problem) 
+            int[] roomCapacities, int[] examEnrollments) 
     {
         this(mutationProbability, randomGenerator, 
                 BoundedRandomGenerator.fromDoubleToInteger(randomGenerator), 
-                roomCapacities, examEnrollments, problem);
+                roomCapacities, examEnrollments);
     }
 
   /** Constructor
@@ -70,18 +55,14 @@ public class RoomMove<T> implements MutationOperator<IntegerMatrixSolution<T>>{
      * @param problem */
     public RoomMove(double mutationProbability, RandomGenerator<Double> mutationRandomGenerator, 
             BoundedRandomGenerator<Integer> positionRandomGenerator, int[] roomCapacities, 
-            int[] examEnrollments, IntegerMatrixProblem problem) 
+            int[] examEnrollments) 
     {
         Check.probabilityIsValid(mutationProbability);
         this.mutationProbability = mutationProbability;
         this.mutationRandomGenerator = mutationRandomGenerator;
         this.positionRandomGenerator = positionRandomGenerator;             
         this.roomCapacities = roomCapacities;
-        this.examEnrollments = examEnrollments;
-        this.problem = problem;
-        this.numberOfImprovements = 0;
-        this.improvementRounds=1000;
-        this.comparator = new localSearchComparator();
+        this.examEnrollments = examEnrollments;           
     }
 
     @Override
@@ -96,35 +77,9 @@ public class RoomMove<T> implements MutationOperator<IntegerMatrixSolution<T>>{
     }
     
     @Override
-    public IntegerMatrixSolution<T> execute(IntegerMatrixSolution<T> solution) 
-    {
-        Check.isNotNull(solution);
-
-        int best;
-        evaluations = 0;
-
-        int rounds = improvementRounds;
-
-        int i = 0;
-        while (i < rounds) {
-          IntegerMatrixSolution mutatedSolution = doMutation((IntegerMatrixSolution)solution.copy());
-
-          problem.evaluate(mutatedSolution);
-          evaluations++;
-
-          best = comparator.compare(mutatedSolution, solution);
-          if (best == -1) {
-            solution = mutatedSolution;
-            numberOfImprovements++;
-          } else if (best == 0) {
-            if (mutationRandomGenerator.getRandomValue() < 0.5) {
-              solution = mutatedSolution;
-            }
-          }
-          i++;
-        }      
- 
-        return solution;
+    public IntegerMatrixSolution<T> execute(IntegerMatrixSolution<T> solution){
+        Check.isNotNull(solution);        
+        return doMutation((IntegerMatrixSolution)solution);
     }
     
     public IntegerMatrixSolution<T> doMutation(IntegerMatrixSolution<T> solution) {
@@ -166,16 +121,17 @@ public class RoomMove<T> implements MutationOperator<IntegerMatrixSolution<T>>{
                 }                
             }
         }        
-        return (IntegerMatrixSolution) solution.copy();
+        return solution;
     }
 
     ArrayList<Integer> getFreeRooms(IntegerMatrixSolution solution, int examIndex){
-       ArrayList<Integer> freeRooms = new ArrayList();
+       ArrayList<Integer> freeRooms = new ArrayList();       
        
        for(int i=0; i<solution.getNumberOfVariables();i++){
            
            if(!(getTimeslot((ArrayList)solution.getVariable(examIndex))==
                    getTimeslot((ArrayList)solution.getVariable(i)))){
+               
                int room  = getRoom((ArrayList)solution.getVariable(i));
                if(freeRooms.contains(room)){
                     continue;
@@ -185,7 +141,7 @@ public class RoomMove<T> implements MutationOperator<IntegerMatrixSolution<T>>{
        }
 //        System.out.println("Free Rooms:"+freeRooms.toString());
        return freeRooms;
-    }    
+    }         
     
     public int getTimeslot(ArrayList<Integer> exam){
         for (int i = 0; i < exam.size(); i++){
