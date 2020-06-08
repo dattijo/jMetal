@@ -60,7 +60,13 @@ public class GreatDelugeAlgorithm<S extends Solution<?>> implements LocalSearchO
         
         
         //DECAY RATE = delB
-        double decayRate = (boundaryLevel - desiredValue)/rounds;
+        double decayRate;
+        if(rounds!=0){
+            decayRate = (boundaryLevel - desiredValue)/rounds;
+        }
+        else{
+            return solution;            
+        }
         double bestCost = boundaryLevel;
         int i = 0;
         int noChange=0;
