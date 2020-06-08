@@ -21,11 +21,14 @@ public class ExamMoveMutation<T> implements MutationOperator<IntegerMatrixSoluti
     private RandomGenerator<Double> mutationRandomGenerator;
     private BoundedRandomGenerator<Integer> positionRandomGenerator;
 
+    int [] roomCapacities;
+    int [] examEnrollments;
     int numberOfTimeslots;
     int examsCount;
     boolean timeslotsExhausted;
     boolean earlierTimeslot;
     boolean changeRoom;
+    
     ArrayList<Integer> earlierFreeTimeslots;
     ArrayList<Integer> largestExams;
     
@@ -43,9 +46,11 @@ public class ExamMoveMutation<T> implements MutationOperator<IntegerMatrixSoluti
      * Move 1 randomly selected exam  to random feasible timeslot and room
      * Constructor
      */
-    public ExamMoveMutation(double mutationProbability, int timeslots, boolean changeRoom) {
+    public ExamMoveMutation(double mutationProbability, int timeslots, boolean changeRoom, int[] roomCapacities, int[] examEnrollments) {
         this(mutationProbability, () -> JMetalRandom.getInstance().nextDouble(), 
                 (a, b) -> JMetalRandom.getInstance().nextInt(a, b), timeslots, 1, changeRoom, null, false);
+        this.roomCapacities = roomCapacities;
+        this.examEnrollments = examEnrollments;
     }
     
     /**
@@ -177,6 +182,11 @@ public class ExamMoveMutation<T> implements MutationOperator<IntegerMatrixSoluti
                     
 //                    System.out.println("TimeslotChangeMutation Successful: "+exam.toString());
                     solution.setVariable(randExamIndices.get(j), (T)exam);
+                    
+                    if(changeRoom){
+                        MutationOperator mutOp = new RoomMove(mutationProbability, roomCapacities, examEnrollments, randExamIndices.get(j));
+                        mutOp.execute(solution);
+                    }
                 }
 //                System.out.println("------");                
             }

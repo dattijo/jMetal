@@ -25,13 +25,22 @@ public class RoomMove<T> implements MutationOperator<IntegerMatrixSolution<T>>{
     
     Map<Integer, ArrayList<Integer>> availableRooms;
     int[] roomCapacities;
-    int[] examEnrollments;  
+    int[] examEnrollments;
+    int randExamIndex = -1;
     
     public RoomMove(double mutationProbability, int[] roomCapacities, int[] examEnrollments) {        
         this(mutationProbability,
                 () -> JMetalRandom.getInstance().nextDouble(), 
                 (a, b) -> JMetalRandom.getInstance().nextInt(a, b), 
                 roomCapacities, examEnrollments);
+    }
+    
+    public RoomMove(double mutationProbability, int[] roomCapacities, int[] examEnrollments, int examIndex) {        
+        this(mutationProbability,
+                () -> JMetalRandom.getInstance().nextDouble(), 
+                (a, b) -> JMetalRandom.getInstance().nextInt(a, b), 
+                roomCapacities, examEnrollments);
+        this.randExamIndex = examIndex;
     }
 
     /** Constructor
@@ -88,37 +97,38 @@ public class RoomMove<T> implements MutationOperator<IntegerMatrixSolution<T>>{
                 
         if ((solutionLength != 0) && (solutionLength != 1)) {
             if (mutationRandomGenerator.getRandomValue() < mutationProbability) {
-                int randExamIndex = positionRandomGenerator.getRandomValue(0, solutionLength - 1);                  
-//                System.out.println("Changing Room for Exam "+randExamIndex+": "+solution.getVariable(randExamIndex)+"");
-                ArrayList<Integer> availableRooms = getFreeRooms(solution,randExamIndex);
-                ArrayList roomsTried =  new ArrayList();
-                int randRoomIndex = positionRandomGenerator.getRandomValue(0, availableRooms.size()-1);
-                int room = availableRooms.get(randRoomIndex);
-//                System.out.println("Room "+room+" selected out of "+availableRooms.size()+" rooms.");
-                int attempts=0;
-                boolean success=true;
-                while (examEnrollments[randExamIndex] > roomCapacities[randRoomIndex]){     
-                    if(attempts>availableRooms.size()){                        
-                        success=false;
-                        break;
-                    }
-                    if(!roomsTried.contains(this)){
-                        roomsTried.add(room);
-                        attempts++;
-                    }                    
-                    randRoomIndex = positionRandomGenerator.getRandomValue(0, availableRooms.size()-1);         
-                }                                                                                                            
-                if(success){
-                    ArrayList<Integer> exam = (ArrayList)solution.getVariable(randExamIndex);                                
-                
-                    exam.set(getTimeslot(exam), availableRooms.get(randRoomIndex));
-//                    System.out.println("Room changed succesfully: "+solution.getVariable(randExamIndex));
-                    //REPLACE BACK INTO SOLUTION
-                    solution.setVariable(randExamIndex, (T)exam);
+                if(randExamIndex == -1){
+                    randExamIndex = positionRandomGenerator.getRandomValue(0, solutionLength - 1);                  
+//                  System.out.println("Changing Room for Exam "+randExamIndex+": "+solution.getVariable(randExamIndex)+"");                     
                 }
                 else{
-//                    System.out.println("Can't change room");
-                }                
+                    ArrayList<Integer> availableRooms = getFreeRooms(solution,randExamIndex);
+                    ArrayList roomsTried =  new ArrayList();
+                    int randRoomIndex = positionRandomGenerator.getRandomValue(0, availableRooms.size()-1);
+                    int room = availableRooms.get(randRoomIndex);
+    //                System.out.println("Room "+room+" selected out of "+availableRooms.size()+" rooms.");
+                    int attempts=0;
+                    boolean success=true;
+                    while (examEnrollments[randExamIndex] > roomCapacities[randRoomIndex]){     
+                        if(attempts>availableRooms.size()){                        
+                            success=false;
+                            break;
+                        }
+                        if(!roomsTried.contains(this)){
+                            roomsTried.add(room);
+                            attempts++;
+                        }                    
+                        randRoomIndex = positionRandomGenerator.getRandomValue(0, availableRooms.size()-1);         
+                    }                                                                                                            
+                    if(success){
+                        ArrayList<Integer> exam = (ArrayList)solution.getVariable(randExamIndex);                                
+
+                        exam.set(getTimeslot(exam), availableRooms.get(randRoomIndex));
+    //                    System.out.println("Room changed succesfully: "+solution.getVariable(randExamIndex));
+                        //REPLACE BACK INTO SOLUTION
+                        solution.setVariable(randExamIndex, (T)exam);
+                    }
+                }               
             }
         }        
         return solution;
