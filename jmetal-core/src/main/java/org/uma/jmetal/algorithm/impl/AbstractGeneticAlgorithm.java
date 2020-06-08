@@ -8,6 +8,7 @@ import org.uma.jmetal.util.JMetalException;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.uma.jmetal.operator.localsearch.LocalSearchOperator;
 
 /**
  * Abstract class representing a genetic algorithm
@@ -20,6 +21,7 @@ public abstract class AbstractGeneticAlgorithm<S, Result> extends AbstractEvolut
   protected SelectionOperator<List<S>, S> selectionOperator ;
   protected CrossoverOperator<S> crossoverOperator ;
   protected MutationOperator<S> mutationOperator ;
+  protected LocalSearchOperator<S> localSearchOperator;             //aadatti
 
   /* Setters and getters */
   public void setMaxPopulationSize(int maxPopulationSize) {
@@ -41,6 +43,10 @@ public abstract class AbstractGeneticAlgorithm<S, Result> extends AbstractEvolut
   public MutationOperator<S> getMutationOperator() {
     return mutationOperator;
   }
+  
+  public LocalSearchOperator<S> getLocalSearchOperator(){
+      return localSearchOperator;
+  }
 
   /**
    * Constructor
@@ -58,7 +64,15 @@ public abstract class AbstractGeneticAlgorithm<S, Result> extends AbstractEvolut
     List<S> population = new ArrayList<>(getMaxPopulationSize());
     for (int i = 0; i < getMaxPopulationSize(); i++) {
       S newIndividual = getProblem().createSolution();
-      population.add(newIndividual);
+      //population.add(newIndividual);
+      /////////////////////////////////
+//      if(localSearchProbability>0.5){
+          population.add(localSearchOperator.execute(newIndividual));
+//      }
+//      else{
+//          population.add(newIndividual);
+//      }
+      ////////////////////////////////
     }
     return population;
   }
@@ -107,7 +121,7 @@ public abstract class AbstractGeneticAlgorithm<S, Result> extends AbstractEvolut
 
       for(S s: offspring){           
 ////////////////////////////////////////////////////////////////aadatti
-          offspringPopulation.add(mutationOperator.execute(s));
+          offspringPopulation.add(mutationOperator.execute(s));          
 ////////////////////////////////////////////////////////////////aadatti
 
 ////////////////////////////////////////////////////original
