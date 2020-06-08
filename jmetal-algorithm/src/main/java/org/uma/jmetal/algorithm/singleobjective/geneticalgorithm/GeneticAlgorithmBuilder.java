@@ -37,6 +37,13 @@ public class GeneticAlgorithmBuilder<S extends Solution<?>> {
   /**
    * Builder constructor
    */
+  public GeneticAlgorithmBuilder(Problem<S> problem,                            //aadatti FOR backward compatibility
+      CrossoverOperator<S> crossoverOperator,
+      MutationOperator<S> mutationOperator) {   //aadatti
+    
+      this(problem, crossoverOperator, mutationOperator, null);      
+  }
+  
   public GeneticAlgorithmBuilder(Problem<S> problem,
       CrossoverOperator<S> crossoverOperator,
       MutationOperator<S> mutationOperator, LocalSearchOperator<S> localSearchOperator) {   //aadatti
