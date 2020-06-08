@@ -12,6 +12,7 @@ import org.uma.jmetal.util.evaluator.SolutionListEvaluator;
 import org.uma.jmetal.util.evaluator.impl.SequentialSolutionListEvaluator;
 
 import java.util.List;
+import org.uma.jmetal.operator.localsearch.LocalSearchOperator;
 
 /**
  * Created by ajnebro on 10/12/14.
@@ -28,6 +29,7 @@ public class GeneticAlgorithmBuilder<S extends Solution<?>> {
   private MutationOperator<S> mutationOperator;
   private SelectionOperator<List<S>, S> selectionOperator;
   private SolutionListEvaluator<S> evaluator;
+  private LocalSearchOperator<S> localSearchOperator;   //aadatti
 
   private GeneticAlgorithmVariant variant ;
   private SelectionOperator<List<S>, S> defaultSelectionOperator = new BinaryTournamentSelection<S>() ;
@@ -37,11 +39,12 @@ public class GeneticAlgorithmBuilder<S extends Solution<?>> {
    */
   public GeneticAlgorithmBuilder(Problem<S> problem,
       CrossoverOperator<S> crossoverOperator,
-      MutationOperator<S> mutationOperator) {
+      MutationOperator<S> mutationOperator, LocalSearchOperator<S> localSearchOperator) {   //aadatti
     this.problem = problem;
     maxEvaluations = 25000;
     populationSize = 100;
     this.mutationOperator = mutationOperator ;
+    this.localSearchOperator = localSearchOperator;                             //aadatti
     this.crossoverOperator = crossoverOperator ;
     this.selectionOperator = defaultSelectionOperator ;
 
@@ -82,8 +85,10 @@ public class GeneticAlgorithmBuilder<S extends Solution<?>> {
     
   public Algorithm<S> build() {
     if (variant == GeneticAlgorithmVariant.GENERATIONAL) {
+//      return new GenerationalGeneticAlgorithm<S>(problem, maxEvaluations, populationSize,//original
+//          crossoverOperator, mutationOperator, selectionOperator, evaluator);
       return new GenerationalGeneticAlgorithm<S>(problem, maxEvaluations, populationSize,
-          crossoverOperator, mutationOperator, selectionOperator, evaluator);
+          crossoverOperator, mutationOperator, selectionOperator, evaluator, localSearchOperator);               //aadatti
     } else if (variant == GeneticAlgorithmVariant.STEADY_STATE) {
       return new SteadyStateGeneticAlgorithm<S>(problem, maxEvaluations, populationSize,
           crossoverOperator, mutationOperator, selectionOperator);
