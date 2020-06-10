@@ -155,18 +155,6 @@ public class ExamMoveMutation<T> implements MutationOperator<IntegerMatrixSoluti
                     }
                 }
                 
-//                System.out.println("Moving the following exams: "+randExamIndices.toString());
-//                System.out.print("To the following timeslots: ");
-                for(int t=0;t<examsCount;t++){
-                    if(earlierTimeslot){
-//                        System.out.println(earlierFreeTimeslots.get(randTimeslotIndices.get(t))+", ");
-                    }
-                    else{
-//                        System.out.print(freeTimeslots.get(randTimeslotIndices.get(t))+", ");
-                    }
-                    
-                }//System.out.println();
-                
                 for(int j=0;j<examsCount;j++){
                     ArrayList exam = (ArrayList)solution.getVariable(randExamIndices.get(j));
 //                    System.out.println("TimeslotChangeMutation on exam: "+exam.toString());
@@ -184,7 +172,7 @@ public class ExamMoveMutation<T> implements MutationOperator<IntegerMatrixSoluti
                     solution.setVariable(randExamIndices.get(j), (T)exam);
                     
                     if(changeRoom){
-                        MutationOperator mutOp = new RoomMove(mutationProbability, roomCapacities, examEnrollments, randExamIndices.get(j));
+                        MutationOperator mutOp = new RoomMoveMutation(mutationProbability, roomCapacities, examEnrollments, randExamIndices.get(j));
                         mutOp.execute(solution);
                     }
                 }
