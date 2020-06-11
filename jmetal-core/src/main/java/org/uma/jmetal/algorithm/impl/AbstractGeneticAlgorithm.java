@@ -67,7 +67,7 @@ public abstract class AbstractGeneticAlgorithm<S, Result> extends AbstractEvolut
       //population.add(newIndividual);
       /////////////////////////////////
 //      if(localSearchProbability>0.5){
-          population.add(localSearchOperator.execute(newIndividual));
+          population.add(mutationOperator.execute(newIndividual));
 //      }
 //      else{
 //          population.add(newIndividual);
@@ -121,7 +121,7 @@ public abstract class AbstractGeneticAlgorithm<S, Result> extends AbstractEvolut
 
       for(S s: offspring){           
 ////////////////////////////////////////////////////////////////aadatti
-          offspringPopulation.add(mutationOperator.execute(s));          
+          offspringPopulation.add(localSearchOperator.execute(s));          
 ////////////////////////////////////////////////////////////////aadatti
 
 ////////////////////////////////////////////////////original

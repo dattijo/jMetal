@@ -14,8 +14,8 @@ import org.uma.jmetal.operator.localsearch.impl.GreatDelugeAlgorithm;
 import org.uma.jmetal.operator.mutation.MutationOperator;
 import org.uma.jmetal.operator.mutation.impl.Kinterchange;
 import org.uma.jmetal.operator.mutation.impl.NullMutation;
-import org.uma.jmetal.operator.mutation.impl.RoomMove;
-import org.uma.jmetal.operator.mutation.impl.RoomSwap;
+import org.uma.jmetal.operator.mutation.impl.RoomMoveMutation;
+import org.uma.jmetal.operator.mutation.impl.RoomSwapMutation;
 import org.uma.jmetal.operator.mutation.impl.ExamMoveMutation;
 import org.uma.jmetal.operator.mutation.impl.TimeslotMoveMutation;
 import org.uma.jmetal.operator.mutation.impl.TimeslotShuffleMutation;
@@ -58,24 +58,26 @@ public class GAETPRunner
         
         ArrayList largestExams = problem.getLargestExams();
         
-        double mutationProbability = 0.9 ;   
-        int improvementRounds = 100;
+        double mutationProbability = 0.9;   
+        int improvementRounds = 0;
         int examsCount=2;
         
         boolean earlierTimeslot=true; 
         boolean changeRoom = true;
         boolean kempeChain=true;                     
         
-        mutation = new NullMutation();                
+        //mutation = new TimeslotShuffleMutation(mutationProbability, numberOfTimeslots);                
+        
+        mutation = new NullMutation();
         localSearchMutation = new NullMutation();
         int rand = (int)(9*Math.random());
-        switch(rand){
+        switch(6){
             //Move 1 or more randomly selected exam(s) to random feasible timeslot(s)
             case 0: localSearchMutation = new ExamMoveMutation(mutationProbability, numberOfTimeslots, examsCount);
                 System.out.println("Move "+examsCount+" randomly selected exam(s) to random feasible timeslot(s)");
                 break;
             //Move 1 randomly selected exam  to random feasible timeslot and room
-            case 1: localSearchMutation = new ExamMoveMutation(mutationProbability, numberOfTimeslots, changeRoom);
+            case 1: localSearchMutation = new ExamMoveMutation(mutationProbability, numberOfTimeslots, changeRoom, roomCapacities, examEnrollments);
                 System.out.println("Move 1 randomly selected exam  to random feasible timeslot and room");
                 break;            
             //Move 1 large exam to random ealier feasible timeslot
@@ -106,11 +108,11 @@ public class GAETPRunner
                 break;
             
             //Move a randomly selected exam to a new feasible room within the same timeslot            
-            case 8: localSearchMutation = new RoomMove(mutationProbability, roomCapacities, examEnrollments); 
+            case 8: localSearchMutation = new RoomMoveMutation(mutationProbability, roomCapacities, examEnrollments); 
                 System.out.println("Move a randomly selected exam to a new feasible room within the same timeslot");
                 break;
             //Swap the rooms of 2 randomly selected exam if feasible.
-            case 9: localSearchMutation = new RoomSwap(mutationProbability, roomCapacities, examEnrollments);
+            case 9: localSearchMutation = new RoomSwapMutation(mutationProbability, roomCapacities, examEnrollments);
                 System.out.println("Swap the rooms of 2 randomly selected exam if feasible");
                 break;
         }
@@ -120,8 +122,8 @@ public class GAETPRunner
         localSearch = new GreatDelugeAlgorithm(improvementRounds, localSearchMutation, comparator, problem);        
         selection = new BinaryTournamentSelection<IntegerMatrixSolution<Integer>>(comparator);                        
         algorithm = new GeneticAlgorithmBuilder<>(problem, crossover, mutation, localSearch)
-            .setPopulationSize(10)      //.setPopulationSize(100)
-            .setMaxEvaluations(20)      //.setMaxEvaluations(250000) 
+            .setPopulationSize(100)      //.setPopulationSize(100)
+            .setMaxEvaluations(200)      //.setMaxEvaluations(250000) 
             .setSelectionOperator(selection)
             .setVariant(GeneticAlgorithmBuilder.GeneticAlgorithmVariant.GENERATIONAL)
             .build() ; 

@@ -70,12 +70,12 @@ public class GreatDelugeAlgorithm<S extends Solution<?>> implements LocalSearchO
         double bestCost = boundaryLevel;
         int i = 0;
         int noChange=0;
-        System.out.println("Improving solution with objective "+solution.getObjective(0));
-        System.out.println("Rounds = "+rounds+"\nDesired value = "+desiredValue+"\nBoundary Level = "+boundaryLevel);
-        System.out.println("Reset Threshold = "+resetThreshold+"\nDecay Rate = "+decayRate+"\nbestCost = "+bestCost);
+//        System.out.println("Improving solution with objective "+solution.getObjective(0));
+//        System.out.println("Rounds = "+rounds+"\nDesired value = "+desiredValue+"\nBoundary Level = "+boundaryLevel);
+//        System.out.println("Reset Threshold = "+resetThreshold+"\nDecay Rate = "+decayRate+"\nbestCost = "+bestCost);
         while(i< rounds){            
             //NEIGHBOURHOOD N(S)
-            System.out.println("Local Search Round "+i);
+//            System.out.println("Local Search Round "+i);
             S mutatedSolution = mutationOperator.execute((S)solution.copy());
             
             problem.evaluate(mutatedSolution);
@@ -88,30 +88,30 @@ public class GreatDelugeAlgorithm<S extends Solution<?>> implements LocalSearchO
                 numberOfImprovements++;
                 noChange=0;
                 if(best==-1){
-                    System.out.println("Improved solution: "+mutatedSolutionCost+" < "+solution.getObjective(0)+" Old solution");
+//                    System.out.println("Improved solution: "+mutatedSolutionCost+" < "+solution.getObjective(0)+" Old solution");
                 }else{
-                    System.out.println("Improved solution: "+mutatedSolutionCost+" <= "+bestCost+" bestCost");
+//                    System.out.println("Improved solution: "+mutatedSolutionCost+" <= "+bestCost+" bestCost");
                 }                
             }else{
                 noChange++;
-                System.out.println("No improvement");
+//                System.out.println("No improvement");
             }
             
             //B = B- delB
             if(mutatedSolutionCost<bestCost){
                 bestCost=mutatedSolutionCost;                
                 boundaryLevel -= decayRate;
-                System.out.println("Updating bestCost and boundaryLevel after improvement");
-                System.out.println("New bestCost = "+bestCost+"\t New boundaryLevel = "+boundaryLevel);
+//                System.out.println("Updating bestCost and boundaryLevel after improvement");
+//                System.out.println("New bestCost = "+bestCost+"\t New boundaryLevel = "+boundaryLevel);
             }
             
             if(noChange>=resetThreshold){
                 boundaryLevel = solution.getObjective(0);
-                System.out.println(noChange+" iterations without improvement. Resetting boundary level");
-                System.out.println("boundaryLevel = "+boundaryLevel);
+//                System.out.println(noChange+" iterations without improvement. Resetting boundary level");
+//                System.out.println("boundaryLevel = "+boundaryLevel);
             }            
             i++;
-            System.out.println("\n\nNext Iteration");
+//            System.out.println("\n\nNext Iteration");
         }
         return (S) solution.copy();
     }

@@ -1091,12 +1091,12 @@ public class ETP extends AbstractIntegerMatrixProblem {
 
         this.evaluateConstraints(solution);
 //        solution.setObjective(0, proximityFitness);
-//        solution.setObjective(0, movementFitness);        
+        solution.setObjective(0, movementFitness);        
 //        solution.setObjective(0, roomUtilizationFitness); 
 //        solution.setObjective(0, compositeFitness);
-        solution.setObjective(0, itc2007Fitness);
+//        solution.setObjective(0, itc2007Fitness);
 
-        System.out.println("Objective =" + solution.getObjective(0)+" Conflicts = "+solution.getAttribute("CONFLICTS"));
+//        System.out.println("Objective =" + solution.getObjective(0)+" Conflicts = "+solution.getAttribute("CONFLICTS"));
     }
 
     public double evaluateProximityFitness(IntegerMatrixSolution<ArrayList<Integer>> solution) {
