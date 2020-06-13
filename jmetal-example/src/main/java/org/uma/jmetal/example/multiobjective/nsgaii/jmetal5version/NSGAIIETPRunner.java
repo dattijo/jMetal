@@ -67,7 +67,7 @@ public class NSGAIIETPRunner extends AbstractAlgorithmRunner {
         new NSGAIIBuilder<IntegerMatrixSolution<Integer>>(
                 problem, crossover, mutation, populationSize)
             .setSelectionOperator(selection)
-            .setMaxEvaluations(20) //.setMaxEvaluations(10000)
+            .setMaxEvaluations(100) //.setMaxEvaluations(10000)
             .build();
 
     AlgorithmRunner algorithmRunner = new AlgorithmRunner.Executor(algorithm).execute();
