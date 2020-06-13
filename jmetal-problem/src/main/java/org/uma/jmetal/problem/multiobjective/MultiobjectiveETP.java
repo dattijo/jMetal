@@ -28,12 +28,18 @@ import org.uma.jmetal.problem.integermatrixproblem.impl.AbstractIntegerMatrixPro
 import org.uma.jmetal.solution.integermatrixsolution.IntegerMatrixSolution;
 import org.uma.jmetal.solution.integermatrixsolution.impl.DefaultIntegerMatrixSolution;
 
+import net.sourceforge.jFuzzyLogic.FIS;
+import net.sourceforge.jFuzzyLogic.FunctionBlock;
+import net.sourceforge.jFuzzyLogic.plot.JFuzzyChart;
+import net.sourceforge.jFuzzyLogic.rule.Variable;
+
 /**
  *
  * @author aadatti
  */
 public class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 
+    FIS fis;
     NumberFormat formatter = new DecimalFormat("#0000.0000");
 
     Map<Integer, Student> studentMap;
@@ -44,7 +50,12 @@ public class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
     ArrayList<Faculty> facultyVector;
     ArrayList<Campus> campusVector;
     ArrayList<ArrayList<Integer>> timetableSolution;
-    ArrayList<Integer> largestExams = new ArrayList<>();
+    ArrayList<Integer> largestExams;
+    ArrayList<Integer> courseType;
+    ArrayList<Integer> courseCredits;
+    ArrayList<Double> successRatio;
+    ArrayList<Integer> perceivedDifficulty;
+    ArrayList<Double> computedDifficulty;
 
     int numberOfExams;
     int numberOfTimeSlots;
@@ -91,6 +102,7 @@ public class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
     class Exam {
 
         int examId, examDuration, studentsCount = 0;
+        private double difficulty;
         TimeSlot timeslot;
         Room room;
         ArrayList<Student> enrollmentList = new ArrayList<>();
@@ -112,6 +124,14 @@ public class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 
         void setRoom(Room rm) {
             room = rm;
+        }
+        
+        void setDifficulty(double d){
+            difficulty = d;
+        }
+        
+        double getDifficulty(){
+            return difficulty;
         }
     }
 
@@ -187,7 +207,7 @@ public class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
         }
     }
 
-    public MultiobjectiveETP(String problemFile) throws IOException {
+    public MultiobjectiveETP(String problemFile, String fuzzySystem, String examDifficultyData) throws IOException {                        
         studentMap = new HashMap<>();
         examVector = new ArrayList<>();
         exclusiveExamsVector = new ArrayList<>();
@@ -195,9 +215,10 @@ public class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
         roomVector = new ArrayList();
         facultyVector = new ArrayList();
         campusVector = new ArrayList();
-        timetableSolution = new ArrayList<ArrayList<Integer>>();
+        timetableSolution = new ArrayList<>();
+        largestExams = new ArrayList<>();
         spreadGap = 0;
-
+        
         conflictMatrix = readProblem(problemFile);
 
         roomToRoomDistanceMatrix = new double[numberOfRooms][numberOfRooms];
@@ -206,7 +227,7 @@ public class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 
         exGraph = new SimpleGraph<>(DefaultEdge.class);
         createGraph(conflictMatrix);
-
+        generateDifficultyMatrix(fuzzySystem, examDifficultyData);
         setNumberOfVariables(numberOfExams);
         setNumberOfObjectives(2);
 //        this.setNumberOfConstraints(5);
@@ -218,6 +239,85 @@ public class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
         return conflictMatrix;
     }
 
+    private void generateDifficultyMatrix(String fuzzySystem, String examDifficultyData) throws IOException{                
+        courseType = new ArrayList();
+        courseCredits = new ArrayList();
+        successRatio = new ArrayList();
+        perceivedDifficulty = new ArrayList();
+        computedDifficulty = new ArrayList();
+        
+        readExamDifficultyData(examDifficultyData);
+                
+        fis = FIS.load(fuzzySystem,true);
+        if( fis == null ) { 
+            System.err.println("Can't load file: '" + fuzzySystem + "'");
+            return;
+        }                
+               
+        for(int i=0; i<numberOfExams;i++){
+            FunctionBlock examDifficulty = fis.getFunctionBlock("examDifficulty");
+            
+            fis.setVariable("credits", courseCredits.get(i));
+            fis.setVariable("type", courseType.get(i));
+            fis.setVariable("sratio", successRatio.get(i));
+            fis.setVariable("pdifficulty", perceivedDifficulty.get(i));
+//            JFuzzyChart.get().chart(examDifficulty);
+            fis.evaluate();
+            
+            Variable difficulty = examDifficulty.getVariable("difficulty");        
+//            Variable var = examDifficulty.getVariable("type");
+//            JFuzzyChart.get().chart(var, true);
+//            JFuzzyChart.get().chart(difficulty, difficulty.getDefuzzifier(), true);    
+            double d = difficulty.getValue();
+            computedDifficulty.add(d);
+            examVector.get(i).setDifficulty(d);
+        }
+    }
+    
+    private void readExamDifficultyData(String file) throws IOException {
+        InputStream in = getClass().getResourceAsStream(file);
+        if (in == null) {
+            in = new FileInputStream(file);
+        }
+
+        InputStreamReader isr = new InputStreamReader(in);
+        BufferedReader br = new BufferedReader(isr);
+
+        StreamTokenizer token = new StreamTokenizer(br);
+
+        token.eolIsSignificant(true);
+        boolean found = false;
+             
+        int t = 0;
+        while (!found&&t != StreamTokenizer.TT_EOF) {                                    
+            switch (t) {
+                case StreamTokenizer.TT_NUMBER:        
+//                    System.out.println("1token.nval "+token.nval);
+                    courseType.add((int)token.nval);
+                    token.nextToken();token.nextToken();
+//                    System.out.println("2token.nval "+token.nval);
+                    courseCredits.add((int)token.nval);
+                    token.nextToken();token.nextToken();
+//                    System.out.println("3token.nval "+token.nval);
+                    successRatio.add(token.nval);
+                    token.nextToken();token.nextToken();
+//                    System.out.println("4token.nval "+token.nval);
+                    perceivedDifficulty.add((int)token.nval);
+                    break;
+                case StreamTokenizer.TT_EOL:
+                    token.nextToken();                        
+                    break;                        
+            }
+            t = token.nextToken();token.nextToken();                            
+        }
+        
+        
+//        System.out.println("courseType : "+courseType.toString());
+//        System.out.println("courseCredits : "+courseCredits.toString());
+//        System.out.println("successRatio : "+successRatio.toString());
+//        System.out.println("perceivedDifficulty : "+perceivedDifficulty.toString());        
+    }
+    
     private int[][] readProblem(String file) throws IOException {
         InputStream in = getClass().getResourceAsStream(file);
         if (in == null) {
