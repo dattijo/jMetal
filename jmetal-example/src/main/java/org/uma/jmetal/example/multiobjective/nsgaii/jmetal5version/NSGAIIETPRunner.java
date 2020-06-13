@@ -4,14 +4,9 @@ import org.uma.jmetal.algorithm.Algorithm;
 import org.uma.jmetal.algorithm.multiobjective.nsgaii.jmetal5version.NSGAIIBuilder;
 import org.uma.jmetal.example.AlgorithmRunner;
 import org.uma.jmetal.operator.crossover.CrossoverOperator;
-import org.uma.jmetal.operator.crossover.impl.PMXCrossover;
 import org.uma.jmetal.operator.mutation.MutationOperator;
-import org.uma.jmetal.operator.mutation.impl.PermutationSwapMutation;
 import org.uma.jmetal.operator.selection.SelectionOperator;
 import org.uma.jmetal.operator.selection.impl.BinaryTournamentSelection;
-import org.uma.jmetal.problem.multiobjective.MultiobjectiveTSP;
-import org.uma.jmetal.problem.permutationproblem.PermutationProblem;
-import org.uma.jmetal.solution.permutationsolution.PermutationSolution;
 import org.uma.jmetal.util.AbstractAlgorithmRunner;
 import org.uma.jmetal.util.JMetalException;
 import org.uma.jmetal.util.JMetalLogger;
@@ -27,6 +22,9 @@ import org.uma.jmetal.operator.mutation.impl.Kinterchange;
 import org.uma.jmetal.problem.integermatrixproblem.IntegerMatrixProblem;
 import org.uma.jmetal.problem.multiobjective.MultiobjectiveETP;
 import org.uma.jmetal.solution.integermatrixsolution.IntegerMatrixSolution;
+
+import net.sourceforge.jFuzzyLogic.FIS;
+//import net.sourceforge.jFuzzyLogic.rule.FuzzyRuleSet;
 
 /**
  * Class for configuring and running the NSGA-II algorithm to solve the bi-objective ETP
@@ -48,7 +46,9 @@ public class NSGAIIETPRunner extends AbstractAlgorithmRunner {
     MutationOperator<IntegerMatrixSolution<Integer>> mutation;
     SelectionOperator<List<IntegerMatrixSolution<Integer>>, IntegerMatrixSolution<Integer>> selection;
 
-    problem = new MultiobjectiveETP("C:/Users/PhDLab/Documents/NetBeansProjects/examTimetableDataReader/exam_comp_set33.exam");
+    problem = new MultiobjectiveETP("C:/Users/PhDLab/Documents/NetBeansProjects/examTimetableDataReader/exam_comp_set44.exam",
+            "C:/Users/PhDLab/Documents/NetBeansProjects/jMetal/jmetal-example/examDifficulty.fcl",
+            "C:/Users/PhDLab/Documents/NetBeansProjects/jMetal/jmetal-example/examDifficultyData");
 
     int [][] conflictMatrix =  problem.getConflictMatrix(); 
     boolean kempeChain=true;
@@ -62,12 +62,12 @@ public class NSGAIIETPRunner extends AbstractAlgorithmRunner {
         new BinaryTournamentSelection<IntegerMatrixSolution<Integer>>(
             new RankingAndCrowdingDistanceComparator<IntegerMatrixSolution<Integer>>());
 
-    int populationSize = 100;   //int populationSize = 100;
+    int populationSize = 10;   //int populationSize = 100;
     algorithm =
         new NSGAIIBuilder<IntegerMatrixSolution<Integer>>(
                 problem, crossover, mutation, populationSize)
             .setSelectionOperator(selection)
-            .setMaxEvaluations(200) //.setMaxEvaluations(10000)
+            .setMaxEvaluations(20) //.setMaxEvaluations(10000)
             .build();
 
     AlgorithmRunner algorithmRunner = new AlgorithmRunner.Executor(algorithm).execute();
