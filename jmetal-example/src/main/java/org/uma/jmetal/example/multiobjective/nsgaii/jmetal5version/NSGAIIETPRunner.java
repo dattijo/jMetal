@@ -62,12 +62,12 @@ public class NSGAIIETPRunner extends AbstractAlgorithmRunner {
         new BinaryTournamentSelection<IntegerMatrixSolution<Integer>>(
             new RankingAndCrowdingDistanceComparator<IntegerMatrixSolution<Integer>>());
 
-    int populationSize = 10;   //int populationSize = 100;
+    int populationSize = 100;   //int populationSize = 100;
     algorithm =
         new NSGAIIBuilder<IntegerMatrixSolution<Integer>>(
                 problem, crossover, mutation, populationSize)
             .setSelectionOperator(selection)
-            .setMaxEvaluations(100) //.setMaxEvaluations(10000)
+            .setMaxEvaluations(1000) //.setMaxEvaluations(10000)
             .build();
 
     AlgorithmRunner algorithmRunner = new AlgorithmRunner.Executor(algorithm).execute();
