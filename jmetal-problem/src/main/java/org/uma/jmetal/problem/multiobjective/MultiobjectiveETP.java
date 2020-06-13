@@ -1197,7 +1197,8 @@ public class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
         solution.setObjective(0, proximityFitness);
         solution.setObjective(1, movementFitness);
 
-//        System.out.println("Objective =" + solution.getObjective(0)+" Conflicts = "+solution.getAttribute("CONFLICTS"));
+        System.out.print("Objective(0) =" + solution.getObjective(0));//+" Conflicts = "+solution.getAttribute("CONFLICTS"));
+        System.out.println("\tObjective(1) =" + solution.getObjective(1));
     }
 
     public double evaluateProximityFitness(IntegerMatrixSolution<ArrayList<Integer>> solution) {
@@ -1212,8 +1213,9 @@ public class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
                 int slot2 = getTimeslot(solution.getVariable(j));
 
                 if (conflictMatrix[i][j] != 0) {
-                    int prox = (int) Math.pow(2, (5 - Math.abs(slot1 - slot2)));
-                    proximity += prox * conflictMatrix[i][j];
+                    double prox =  Math.pow(2, (5 - Math.abs(slot1 - slot2)));
+                    double diffFactor = computedDifficulty.get(i)+computedDifficulty.get(j);
+                    proximity += (prox/diffFactor) * conflictMatrix[i][j];
                 }
             }
         }
