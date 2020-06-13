@@ -272,6 +272,14 @@ public class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
             computedDifficulty.add(d);
             examVector.get(i).setDifficulty(d);
         }
+//        System.out.println("Sums\t\t\tProducts");
+//        for(int i=0; i<numberOfExams-1;i++){
+//            for(int j=0; j<numberOfExams;j++){
+//                if(i==j)continue;
+//                System.out.print(computedDifficulty.get(i)+computedDifficulty.get(j)+"\t");
+//                System.out.println(computedDifficulty.get(i)*computedDifficulty.get(j));    
+//            }
+//        }
     }
     
     private void readExamDifficultyData(String file) throws IOException {
@@ -1197,8 +1205,8 @@ public class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
         solution.setObjective(0, proximityFitness);
         solution.setObjective(1, movementFitness);
 
-        System.out.print("Objective(0) =" + solution.getObjective(0));//+" Conflicts = "+solution.getAttribute("CONFLICTS"));
-        System.out.println("\tObjective(1) =" + solution.getObjective(1));
+//        System.out.print("Objective(0) =" + solution.getObjective(0));//+" Conflicts = "+solution.getAttribute("CONFLICTS"));
+//        System.out.println("\tObjective(1) =" + solution.getObjective(1));
     }
 
     public double evaluateProximityFitness(IntegerMatrixSolution<ArrayList<Integer>> solution) {
