@@ -8,6 +8,7 @@ import org.uma.jmetal.util.JMetalException;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.uma.jmetal.operator.localsearch.LocalSearchOperator;
 
 /**
  *
@@ -16,15 +17,18 @@ import java.util.List;
 public class CrossoverAndMutationVariation<S extends Solution<?>> implements Variation<S> {
   private CrossoverOperator<S> crossover ;
   private MutationOperator<S> mutation ;
+  protected LocalSearchOperator<S> localSearchOperator;             //aadatti
   private int matingPoolSize ;
   private int offspringPopulationSize ;
 
   public CrossoverAndMutationVariation(
       int offspringPopulationSize,
       CrossoverOperator<S> crossover,
-      MutationOperator<S> mutation) {
+      MutationOperator<S> mutation,
+      LocalSearchOperator<S> localSearchOperator){
     this.crossover = crossover ;
     this.mutation = mutation ;
+    this.localSearchOperator = localSearchOperator;
     this.offspringPopulationSize = offspringPopulationSize ;
 
     this.matingPoolSize = offspringPopulationSize *
@@ -53,7 +57,8 @@ public class CrossoverAndMutationVariation<S extends Solution<?>> implements Var
 
       for (S s : offspring) {
         mutation.execute(s);
-        offspringPopulation.add(s);
+//        offspringPopulation.add(s);                               //original
+        offspringPopulation.add(localSearchOperator.execute(s));    //aadatti
         if (offspringPopulation.size() == offspringPopulationSize) {
           break;
         }
@@ -85,5 +90,9 @@ public class CrossoverAndMutationVariation<S extends Solution<?>> implements Var
   @Override
   public int getOffspringPopulationSize() {
     return offspringPopulationSize ;
+  }
+  
+  public LocalSearchOperator<S> getLocalSearchOperator(){
+      return localSearchOperator;
   }
 }
