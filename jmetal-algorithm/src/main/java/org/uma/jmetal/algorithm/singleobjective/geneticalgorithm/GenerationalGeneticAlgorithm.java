@@ -1,6 +1,5 @@
 package org.uma.jmetal.algorithm.singleobjective.geneticalgorithm;
 
-import java.util.ArrayList;
 import org.uma.jmetal.algorithm.impl.AbstractGeneticAlgorithm;
 import org.uma.jmetal.operator.crossover.CrossoverOperator;
 import org.uma.jmetal.operator.mutation.MutationOperator;
