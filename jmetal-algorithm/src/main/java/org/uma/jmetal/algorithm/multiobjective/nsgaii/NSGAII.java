@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.uma.jmetal.operator.localsearch.LocalSearchOperator;
 
 /** @author Antonio J. Nebro <antonio@lcc.uma.es> */
 public class NSGAII<S extends Solution<?>> extends AbstractEvolutionaryAlgorithm<S, List<S>>
@@ -42,6 +43,7 @@ public class NSGAII<S extends Solution<?>> extends AbstractEvolutionaryAlgorithm
   protected SelectionOperator<List<S>, S> selectionOperator;
   protected CrossoverOperator<S> crossoverOperator;
   protected MutationOperator<S> mutationOperator;
+  protected LocalSearchOperator<S> localSearchOperator;     //aadatti
 
   protected InitialSolutionsCreation<S> initialSolutionsCreation;
   protected Termination termination;
@@ -64,15 +66,17 @@ public class NSGAII<S extends Solution<?>> extends AbstractEvolutionaryAlgorithm
       CrossoverOperator<S> crossoverOperator,
       MutationOperator<S> mutationOperator,
       Termination termination,
-      Ranking<S> ranking) {
+      Ranking<S> ranking,
+      LocalSearchOperator localSearchOperator) {    //aadatti
 
     this.populationSize = populationSize;
     this.problem = problem;
 
     this.crossoverOperator = crossoverOperator;
     this.mutationOperator = mutationOperator;
-
-    this.initialSolutionsCreation = new RandomSolutionsCreation<>(problem, populationSize);
+    this.localSearchOperator = localSearchOperator;
+//    this.initialSolutionsCreation = new RandomSolutionsCreation<>(problem, populationSize);//original
+    this.initialSolutionsCreation = new RandomSolutionsCreation<>(problem, populationSize, mutationOperator);//aadatti
 
     DensityEstimator<S> densityEstimator = new CrowdingDistanceDensityEstimator<>();
 
@@ -82,7 +86,8 @@ public class NSGAII<S extends Solution<?>> extends AbstractEvolutionaryAlgorithm
 
     this.variation =
         new CrossoverAndMutationVariation<>(
-            offspringPopulationSize, crossoverOperator, mutationOperator);
+//            offspringPopulationSize, crossoverOperator, mutationOperator );   //original
+            offspringPopulationSize, crossoverOperator, mutationOperator, localSearchOperator);     //aadatti
 
     this.selection =
         new NaryTournamentMatingPoolSelection<>(
@@ -117,7 +122,29 @@ public class NSGAII<S extends Solution<?>> extends AbstractEvolutionaryAlgorithm
         crossoverOperator,
         mutationOperator,
         termination,
-        new FastNonDominatedSortRanking<>());
+        new FastNonDominatedSortRanking<>(),
+        null);  //aadatti
+  }
+  
+    //aadatti
+  /** Constructor */
+  public NSGAII(
+      Problem<S> problem,
+      int populationSize,
+      int offspringPopulationSize,
+      CrossoverOperator<S> crossoverOperator,
+      MutationOperator<S> mutationOperator,
+      Termination termination,
+      LocalSearchOperator localSearchOperator) {
+    this(
+        problem,
+        populationSize,
+        offspringPopulationSize,
+        crossoverOperator,
+        mutationOperator,
+        termination,
+        new FastNonDominatedSortRanking<>(),
+        localSearchOperator);  //aadatti
   }
 
   @Override

@@ -69,6 +69,8 @@
         <dependency>
             <groupId>org.uma.jmetal</groupId>
             <artifactId>jmetal-problem</artifactId>
+            <version>6.0-SNAPSHOT</version>
+            <type>jar</type>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
@@ -78,6 +80,12 @@
             <groupId>org.knowm.xchart</groupId>
             <artifactId>xchart</artifactId>
             <version>3.2.2</version>
+        </dependency>
+        <dependency>
+            <groupId>net.sourceforge.jFuzzyLogic</groupId>
+            <artifactId>jFuzzyLogic</artifactId>
+            <version>1.2.1</version>
+            <type>jar</type>
         </dependency>
     </dependencies>
 </project>

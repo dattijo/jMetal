@@ -73,5 +73,11 @@
             <artifactId>jgrapht-core</artifactId>
             <version>1.4.0</version>
         </dependency>
+        <dependency>
+            <groupId>net.sourceforge.jFuzzyLogic</groupId>
+            <artifactId>jFuzzyLogic</artifactId>
+            <version>1.2.1</version>
+            <type>jar</type>
+        </dependency>
     </dependencies>
 </project>
