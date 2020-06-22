@@ -85,7 +85,7 @@ public class TimeslotShuffleMutation<T> implements MutationOperator<IntegerMatri
                         if(getTimeslot(exam)==slot){
 //                                System.out.println("\nOriginal Exam "+i+":"+solution.getVariable(i));
                             int room = getRoom(exam);                        
-                            exam.set(slot, 0);                                
+                            exam.set(slot, -1);                                
 //                                exam.set(usedTimeslots.get(slot), room);
                             exam.set(allTimeslots.get(slot), room);
                             mySol.set(i,exam);                                
@@ -108,7 +108,7 @@ public class TimeslotShuffleMutation<T> implements MutationOperator<IntegerMatri
     
     public int getTimeslot(ArrayList<Integer> exam){
         for (int i = 0; i < exam.size(); i++){
-            if (exam.get(i) != 0) {
+            if (exam.get(i) != -1) {
                 return i;
             }
         }
@@ -117,7 +117,7 @@ public class TimeslotShuffleMutation<T> implements MutationOperator<IntegerMatri
 
     public int getRoom(ArrayList<Integer> exam) {
         for (int i = 0; i < exam.size(); i++) {
-            if (exam.get(i) != 0) {
+            if (exam.get(i) != -1) {
                 return exam.get(i);
             }
         }

@@ -93,14 +93,14 @@ public class TimeslotMoveMutation<T> implements MutationOperator<IntegerMatrixSo
                     if(getTimeslot(exam)==randTimeslotIndex1){
 //                        System.out.println("Moving exam "+i+" from timelsot "+randTimeslotIndex1+" to "+randTimeslotIndex2);
                         int room = getRoom(exam);
-                        exam.set(randTimeslotIndex1, 0);
+                        exam.set(randTimeslotIndex1, -1);
                         exam.set(randTimeslotIndex2, room);
                         tmpSolution.setVariable(i, exam);
                     }
                     else if(getTimeslot(exam)==randTimeslotIndex2){
 //                        System.out.println("Moving exam "+i+" from timelsot "+randTimeslotIndex2+" to "+randTimeslotIndex1);
                         int room = getRoom(exam);
-                        exam.set(randTimeslotIndex2, 0);
+                        exam.set(randTimeslotIndex2, -1);
                         exam.set(randTimeslotIndex1, room);
                         tmpSolution.setVariable(i, exam);
                     }                                        
@@ -113,7 +113,7 @@ public class TimeslotMoveMutation<T> implements MutationOperator<IntegerMatrixSo
     
     public int getTimeslot(ArrayList<Integer> exam){
         for (int i = 0; i < exam.size(); i++){
-            if (exam.get(i) != 0) {
+            if (exam.get(i) != -1) {
                 return i;
             }
         }
@@ -122,7 +122,7 @@ public class TimeslotMoveMutation<T> implements MutationOperator<IntegerMatrixSo
 
     public int getRoom(ArrayList<Integer> exam) {
         for (int i = 0; i < exam.size(); i++) {
-            if (exam.get(i) != 0) {
+            if (exam.get(i) != -1) {
                 return exam.get(i);
             }
         }

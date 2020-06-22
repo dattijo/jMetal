@@ -155,7 +155,7 @@ public class RoomMoveMutation<T> implements MutationOperator<IntegerMatrixSoluti
     
     public int getTimeslot(ArrayList<Integer> exam){
         for (int i = 0; i < exam.size(); i++){
-            if (exam.get(i) != 0) {
+            if (exam.get(i) != -1) {
                 return i;
             }
         }
@@ -164,7 +164,7 @@ public class RoomMoveMutation<T> implements MutationOperator<IntegerMatrixSoluti
 
     public int getRoom(ArrayList<Integer> exam) {
         for (int i = 0; i < exam.size(); i++) {
-            if (exam.get(i) != 0) {
+            if (exam.get(i) != -1) {
                 return exam.get(i);
             }
         }

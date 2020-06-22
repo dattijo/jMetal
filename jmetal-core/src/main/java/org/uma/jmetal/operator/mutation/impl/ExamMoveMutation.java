@@ -158,9 +158,10 @@ public class ExamMoveMutation<T> implements MutationOperator<IntegerMatrixSoluti
                 for(int j=0;j<examsCount;j++){
                     ArrayList exam = (ArrayList)solution.getVariable(randExamIndices.get(j));
 //                    System.out.println("TimeslotChangeMutation on exam: "+exam.toString());
-                    int oldRoom = getRoom(exam);
-                    int oldTimeslot = getTimeslot(exam);
-                    exam.set(oldTimeslot, 0);
+                    int oldRoom = getRoom(exam);                    
+                    int oldTimeslot = getTimeslot(exam);                    
+                    
+                    exam.set(oldTimeslot, -1);
                     if(earlierTimeslot){
                         exam.set(earlierFreeTimeslots.get(randTimeslotIndices.get(j)), oldRoom);
                     }
@@ -187,9 +188,11 @@ public class ExamMoveMutation<T> implements MutationOperator<IntegerMatrixSoluti
         ArrayList freeTimeslots = new ArrayList();
         earlierFreeTimeslots = new ArrayList();
         int exSlot = getTimeslot((ArrayList)solution.getVariable(examIndex));
+        if(exSlot==-1) return freeTimeslots;
 //        System.out.println("Finding freeTimeslots before "+exSlot+"...");
         for(int i=0; i<solution.getNumberOfVariables();i++){
             int timeslot = getTimeslot((ArrayList)solution.getVariable(i));
+            if(timeslot==-1)break;
             if(!usedTimeslots.contains(timeslot)){
                 usedTimeslots.add(timeslot);
             }
@@ -213,7 +216,7 @@ public class ExamMoveMutation<T> implements MutationOperator<IntegerMatrixSoluti
     
     public int getTimeslot(ArrayList<Integer> exam){
         for (int i = 0; i < exam.size(); i++){
-            if (exam.get(i) != 0) {
+            if (exam.get(i) != -1) {
                 return i;
             }
         }
@@ -222,7 +225,7 @@ public class ExamMoveMutation<T> implements MutationOperator<IntegerMatrixSoluti
 
     public int getRoom(ArrayList<Integer> exam) {
         for (int i = 0; i < exam.size(); i++) {
-            if (exam.get(i) != 0) {
+            if (exam.get(i) != -1) {
                 return exam.get(i);
             }
         }

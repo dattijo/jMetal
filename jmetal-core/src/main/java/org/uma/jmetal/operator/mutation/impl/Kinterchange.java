@@ -256,12 +256,12 @@ public class Kinterchange<T> implements MutationOperator<IntegerMatrixSolution<T
                 else{
                     IntegerMatrixSolution tmpSolution = (IntegerMatrixSolution) solution.copy();
                     int room1 = getRoom(exam1);
-                    exam1.set(timeslot1, 0);
+                    exam1.set(timeslot1, -1);
                     exam1.set(timeslot2, room1);
                     tmpSolution.setVariable(pos1, (T)exam1);
                     
                     int room2 = getRoom(exam2);
-                    exam2.set(timeslot2, 0);
+                    exam2.set(timeslot2, -1);
                     exam2.set(timeslot1, room2);                    
                     tmpSolution.setVariable(pos2, (T)exam2);
                     
@@ -279,7 +279,7 @@ public class Kinterchange<T> implements MutationOperator<IntegerMatrixSolution<T
     
     public int getTimeslot(ArrayList<Integer> exam){
         for (int i = 0; i < exam.size(); i++){
-            if (exam.get(i) != 0) {
+            if (exam.get(i) != -1) {
                 return i;
             }
         }
@@ -288,7 +288,7 @@ public class Kinterchange<T> implements MutationOperator<IntegerMatrixSolution<T
 
     public int getRoom(ArrayList<Integer> exam) {
         for (int i = 0; i < exam.size(); i++) {
-            if (exam.get(i) != 0) {
+            if (exam.get(i) != -1) {
                 return exam.get(i);
             }
         }
