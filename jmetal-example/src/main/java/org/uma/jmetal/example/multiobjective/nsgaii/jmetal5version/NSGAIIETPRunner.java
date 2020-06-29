@@ -19,6 +19,7 @@ import org.uma.jmetal.util.pseudorandom.JMetalRandom;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import org.uma.jmetal.operator.crossover.impl.NullCrossover;
 import org.uma.jmetal.operator.mutation.impl.Kinterchange;
 import org.uma.jmetal.problem.integermatrixproblem.IntegerMatrixProblem;
@@ -70,7 +71,7 @@ public class NSGAIIETPRunner extends AbstractAlgorithmRunner {
 //            "C:/Users/PhDLab/Documents/NetBeansProjects/jMetal/jmetal-example/examDifficulty.fcl",
 //            "C:/Users/PhDLab/Documents/NetBeansProjects/jMetal/jmetal-example/examDifficultyData");
         String mainPath = "C:/Users/PhDLab/Documents/NetBeansProjects/jMetal/jmetal-example";
-        String examDatasetFile = "/dataset/modifiedITC2007/exam_comp_set44.exam";
+        String examDatasetFile = "/dataset/modifiedITC2007/exam_comp_set11.exam";
         String examDifficultyData = "/fuzzyData/exam_comp_set_any.diff";
         String fuzzyLogicFile = "/fuzzyData/examDifficulty.fcl";
 
@@ -93,7 +94,7 @@ public class NSGAIIETPRunner extends AbstractAlgorithmRunner {
         mutation = new TimeslotShuffleMutation(mutationProbability, numberOfTimeslots);
         localSearchMutation = new NullMutation();
 
-        int rand = (int) (9 * Math.random());
+        int rand = new Random().nextInt(9);                
         switch (6) {
             //Move 1 or more randomly selected exam(s) to random feasible timeslot(s)
             case 0:
@@ -154,10 +155,10 @@ public class NSGAIIETPRunner extends AbstractAlgorithmRunner {
                 = new BinaryTournamentSelection<IntegerMatrixSolution<Integer>>(
                         new RankingAndCrowdingDistanceComparator<IntegerMatrixSolution<Integer>>());
 
-        int populationSize = 20;   //int populationSize = 100;
+        int populationSize = 10;   //int populationSize = 100;
         int offspringPopulationSize = populationSize;
 
-        Termination termination = new TerminationByEvaluations(20);
+        Termination termination = new TerminationByEvaluations(10);
         comparator = new RankingAndCrowdingDistanceComparator<IntegerMatrixSolution<Integer>>();
         localSearch = new GreatDelugeAlgorithm(improvementRounds, localSearchMutation, comparator, problem);
         algorithm
