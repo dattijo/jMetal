@@ -17,6 +17,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.Random;
 import java.util.Set;
 
 import org.jgrapht.Graph;
@@ -82,13 +84,14 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
     int[][] exclusionMatrix;
     int[][] coincidenceMatrix;
     int[][] afterMatrix;
-    
-     boolean feasible;
+
+    boolean feasible;
 
     Graph<Integer, DefaultEdge> exGraph;
     Coloring coloredGraph;
 
     class Student {
+
         int sId;
         ArrayList<Exam> examList = new ArrayList<>();
 
@@ -103,7 +106,7 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 
     class Exam {
 
-        int examId, examDuration, studentsCount = 0;
+        int examId, examDuration, priority, studentsCount = 0;
         private double difficulty;
         TimeSlot timeslot;
         Room room;
@@ -120,26 +123,34 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
             studentsCount++;
         }
 
-        void setTimeSlot(TimeSlot tSlot) {            
-            timeslot = tSlot;            
+        void setTimeSlot(int tSlot) {
+            if (tSlot != -1) {
+                timeslot = timeslotVector.get(tSlot);
+            } else {
+                timeslot = null;
+            }
         }
 
         void setRoom(int i) {
-            room = roomVector.get(i);            
+            if (i != -1) {
+                room = roomVector.get(i);
+            } else {
+                room = null;
+            }
         }
-        
-        void setDifficulty(double d){
+
+        void setDifficulty(double d) {
             difficulty = d;
         }
-        
-        double getDifficulty(){
+
+        double getDifficulty() {
             return difficulty;
         }
     }
 
     class Room {
 
-        int capacity, roomId, distToFaculty, penalty, freeSeats;
+        int freeSeats, capacity, roomId, distToFaculty, penalty;
         Faculty myFaculty;
         List<Exam> examList = new ArrayList<>();
 
@@ -149,33 +160,44 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
             myFaculty = facultyVector.get(fId);
             distToFaculty = dToF;
             penalty = pen;
-            freeSeats = cap;
+            freeSeats = capacity;
         }
 
-        void allocateExam(int i){
+        boolean allocateExam(int i) {
             Exam exam = examVector.get(i);
-            if(!examList.contains(exam)){
-                examList.add(exam);
-            }            
+            if (!examList.contains(exam)) {
+                if (getFreeSeats(exam.examId) >= exam.studentsCount) {
+                    examList.add(exam);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        void deAllocateExam(int i) {
+            Exam exam = examVector.get(i);
+            if (!examList.remove(exam)) {
+                System.out.println("-->deAllocation Failed<--");
+            };
+//            freeSeats+=exam.studentsCount;
         }
 
         Faculty getFaculty() {
             return myFaculty;
         }
-        
-        int getFreeSeats(int timeslot){
-            for(Exam e:examList){
-                if(e.examId==timeslot){
-                    freeSeats-=e.studentsCount;
-                }                
+
+        int getFreeSeats(int timeslot) {
+            int myFreeSeats = freeSeats;
+            for (Exam e : getExams(timeslot)) {
+                myFreeSeats -= e.studentsCount;
             }
-            return freeSeats;
+            return myFreeSeats;
         }
-        
-        ArrayList<Exam> getExams(int timeslot){
+
+        ArrayList<Exam> getExams(int timeslot) {
             ArrayList<Exam> result = new ArrayList();
-            for(Exam e: examList){
-                if(e.timeslot.id==timeslot){
+            for (Exam e : examList) {
+                if (e.timeslot.id == timeslot) {
                     result.add(e);
                 }
             }
@@ -222,7 +244,7 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 
         TimeSlot(int i, Date d, int dur, int pen) {
             id = i;
-            dateAndTime = d;            
+            dateAndTime = d;
             duration = dur;
             penalty = pen;
         }
@@ -230,17 +252,81 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
         void addExam(int i) {
             Exam e = examVector.get(i);
             examList.add(e);
-        }    
-        
-        void removeExam(int i){
+        }
+
+        void removeExam(int i) {
             Exam e = examVector.get(i);
-            if(examList.contains(e)){
+            if (examList.contains(e)) {
                 examList.remove(e);
-            }            
+            }
         }
     }
 
-    public MultiobjectiveETP(String problemFile, String fuzzySystem, String examDifficultyData) throws IOException {                        
+    class Conflict {
+
+        Exam conflictingExam;
+        int evictionCount;
+
+        Conflict(Exam e, int eC) {
+            conflictingExam = e;
+            evictionCount = eC;
+        }
+    }
+
+    class TimeslotRoomPair {
+
+        ArrayList<Conflict> conflicts = new ArrayList();
+
+        int timeslot1, room1, rank;
+
+        TimeslotRoomPair(int t1, int r1) {
+            timeslot1 = t1;
+            room1 = r1;
+            rank = 0;
+        }
+
+        void computeRank() {
+            int sum = 0;
+            for (Conflict con : conflicts) {
+                sum += con.evictionCount;
+            }
+            rank = sum;
+        }
+    }
+
+    class ExamComparatorByEnrollment implements Comparator<Exam> {
+
+        @Override
+        public int compare(Exam a, Exam b) {
+            return a.studentsCount < b.studentsCount ? -1 : a.studentsCount == b.studentsCount ? 0 : 1;
+        }
+    }
+
+    class ExamComparatorByPriority implements Comparator<Exam> {
+
+        @Override
+        public int compare(Exam a, Exam b) {
+            return a.priority < b.priority ? -1 : a.priority == b.priority ? 0 : 1;
+        }
+    }
+
+    class RoomComparator implements Comparator<Room> {
+
+        @Override
+        public int compare(Room a, Room b) {
+            return a.capacity < b.capacity ? -1 : a.capacity == b.capacity ? 0 : 1;
+        }
+    }
+
+    class TimeslotRoomPairComparator implements Comparator<TimeslotRoomPair> {
+
+        @Override
+        public int compare(TimeslotRoomPair a, TimeslotRoomPair b) {
+            return a.rank < b.rank ? -1 : a.rank == b.rank ? 0 : 1;
+        }
+    }
+
+    public MultiobjectiveETP(String problemFile, String fuzzySystem, String examDifficultyData) throws IOException {
         studentMap = new HashMap<>();
         examVector = new ArrayList<>();
         exclusiveExamsVector = new ArrayList<>();
@@ -251,20 +337,19 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
         timetableSolution = new ArrayList<>();
         largestExams = new ArrayList<>();
         spreadGap = 0;
-        
+
         conflictMatrix = readProblem(problemFile);
 
         roomToRoomDistanceMatrix = new double[numberOfRooms][numberOfRooms];
 
         generateDistanceMatrices();
-        
+
 //        System.out.println("Number of Students = "+studentMap.size());
 //        System.out.println("Number if Exams = "+numberOfExams);
 //        System.out.println("Number if Timeslots = "+numberOfTimeSlots);
 //        System.out.println("Number if Rooms = "+numberOfRooms);
 //        System.out.println("Number if Campuses = "+numberOfCampuses);
 //        System.out.println("Number if Faculties = "+numberOfFaculties);
-        
         exGraph = new SimpleGraph<>(DefaultEdge.class);
         createGraph(conflictMatrix);
         generateDifficultyMatrix(fuzzySystem, examDifficultyData);
@@ -279,31 +364,31 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
         return conflictMatrix;
     }
 
-    private boolean generateDifficultyMatrix(String fuzzySystem, String examDifficultyData) throws IOException{                
+    private boolean generateDifficultyMatrix(String fuzzySystem, String examDifficultyData) throws IOException {
         courseType = new ArrayList();
         courseCredits = new ArrayList();
         successRatio = new ArrayList();
         perceivedDifficulty = new ArrayList();
         computedDifficulty = new ArrayList();
-        
+
         readExamDifficultyData(examDifficultyData);
-                
-        fis = FIS.load(fuzzySystem,true);
-        if( fis == null ) { 
+
+        fis = FIS.load(fuzzySystem, true);
+        if (fis == null) {
             System.err.println("Can't load file: '" + fuzzySystem + "'");
             return false;
-        }                            
-        for(int i=0; i<numberOfExams;i++){            
+        }
+        for (int i = 0; i < numberOfExams; i++) {
             FunctionBlock examDifficulty = fis.getFunctionBlock("examDifficulty");
-            
+
             fis.setVariable("credits", courseCredits.get(i));
             fis.setVariable("type", courseType.get(i));
             fis.setVariable("sratio", successRatio.get(i));
             fis.setVariable("pdifficulty", perceivedDifficulty.get(i));
 //            JFuzzyChart.get().chart(examDifficulty);
             fis.evaluate();
-            
-            Variable difficulty = examDifficulty.getVariable("difficulty");        
+
+            Variable difficulty = examDifficulty.getVariable("difficulty");
 //            Variable var = examDifficulty.getVariable("type");
 //            JFuzzyChart.get().chart(var, true);
 //            JFuzzyChart.get().chart(difficulty, difficulty.getDefuzzifier(), true);    
@@ -321,7 +406,7 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 //        }
         return true;
     }
-    
+
     private boolean readExamDifficultyData(String file) throws IOException {
         InputStream in = getClass().getResourceAsStream(file);
         if (in == null) {
@@ -335,38 +420,41 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 
         token.eolIsSignificant(true);
         boolean found = false;
-             
+
         int t = 0;
-        while (!found&&t != StreamTokenizer.TT_EOF) {                                    
+        while (!found && t != StreamTokenizer.TT_EOF) {
             switch (t) {
-                case StreamTokenizer.TT_NUMBER:        
+                case StreamTokenizer.TT_NUMBER:
 //                    System.out.println("1token.nval "+token.nval);
-                    courseType.add((int)token.nval);
-                    token.nextToken();token.nextToken();
+                    courseType.add((int) token.nval);
+                    token.nextToken();
+                    token.nextToken();
 //                    System.out.println("2token.nval "+token.nval);
-                    courseCredits.add((int)token.nval);
-                    token.nextToken();token.nextToken();
+                    courseCredits.add((int) token.nval);
+                    token.nextToken();
+                    token.nextToken();
 //                    System.out.println("3token.nval "+token.nval);
                     successRatio.add(token.nval);
-                    token.nextToken();token.nextToken();
+                    token.nextToken();
+                    token.nextToken();
 //                    System.out.println("4token.nval "+token.nval);
-                    perceivedDifficulty.add((int)token.nval);
+                    perceivedDifficulty.add((int) token.nval);
                     break;
                 case StreamTokenizer.TT_EOL:
-                    token.nextToken();                        
-                    break;                        
+                    token.nextToken();
+                    break;
             }
-            t = token.nextToken();token.nextToken();                            
+            t = token.nextToken();
+            token.nextToken();
         }
-        
-        
+
 //        System.out.println("courseType : "+courseType.toString());
 //        System.out.println("courseCredits : "+courseCredits.toString());
 //        System.out.println("successRatio : "+successRatio.toString());
 //        System.out.println("perceivedDifficulty : "+perceivedDifficulty.toString());  
         return true;
     }
-    
+
     private int[][] readProblem(String file) throws IOException {
         InputStream in = getClass().getResourceAsStream(file);
         if (in == null) {
@@ -392,6 +480,7 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
         readRoomConstraints(token, found);
         readWeightings(token, found);
 
+        setExamPriorities();
         return conflictMatrix;
     }
 
@@ -405,11 +494,14 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
             }
         }
 
-        tok.nextToken();tok.nextToken();
-        
+        tok.nextToken();
+        tok.nextToken();
+
         numberOfExams = (int) tok.nval;
-        tok.nextToken();tok.nextToken();tok.nextToken();
-               
+        tok.nextToken();
+        tok.nextToken();
+        tok.nextToken();
+
         addExam(tok);
 
         //Read Enrollments
@@ -417,8 +509,9 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
         int t = 0;
         while (!fnd) {
             if ((tok.sval != null) && ((tok.sval.compareTo("Periods") == 0))) {
-                tok.nextToken();tok.nextToken();
-                
+                tok.nextToken();
+                tok.nextToken();
+
                 numberOfTimeSlots = (int) tok.nval;
                 fnd = true;
             } else {
@@ -434,8 +527,8 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
                         if (!studentMap.containsKey(currentStudent)) {
                             studentMap.put(currentStudent, new Student(currentStudent));
                         }
-                        examVector.get(tok.lineno() - 2).addStudent(studentMap.get(currentStudent));                        
-                        studentMap.get(currentStudent).examList.add(examVector.get(tok.lineno()-2));
+                        examVector.get(tok.lineno() - 2).addStudent(studentMap.get(currentStudent));
+                        studentMap.get(currentStudent).examList.add(examVector.get(tok.lineno() - 2));
                         break;
                 }
             }
@@ -451,7 +544,6 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 //            }
 //            System.out.println();
 //        }
-
         conflictMatrix = new int[numberOfExams][numberOfExams];
 
         //Generate Conflict Matrix
@@ -512,8 +604,8 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
         int t, tCount = 0;
 //        int day, pos, duration, penalty;
 //        day = pos = duration = 0;
-        int day,month,year,hour,minutes,seconds, duration, penalty;
-        day = month = year = hour = minutes = seconds = duration = penalty =0;
+        int day, month, year, hour, minutes, seconds, duration, penalty;
+        day = month = year = hour = minutes = seconds = duration = penalty = 0;
         while (!fnd) {
             if ((tok.sval != null) && ((tok.sval.compareTo("Campuses") == 0))) {
                 tok.nextToken();
@@ -523,7 +615,7 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
                 fnd = true;
             } else {
                 t = tok.nextToken();
-               
+
                 switch (t) {
                     case StreamTokenizer.TT_EOL:
                         break;
@@ -532,19 +624,34 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 //                        pos = (int) tok.nval;tok.nextToken();tok.nextToken();
 //                        duration = (int) tok.nval;tok.nextToken();tok.nextToken();
 //                        penalty = (int) tok.nval;tok.nextToken();
-                        
-                        day = (int) tok.nval;tok.nextToken();tok.nextToken();                                                
-                        month = (int) tok.nval;tok.nextToken();tok.nextToken();
-                        year = (int) tok.nval;tok.nextToken();tok.nextToken();
-                        hour = (int) tok.nval;tok.nextToken();tok.nextToken();
-                        minutes = (int) tok.nval;tok.nextToken();tok.nextToken();
-                        seconds = (int) tok.nval;tok.nextToken();tok.nextToken();
-                        duration = (int) tok.nval;tok.nextToken();tok.nextToken();
-                        penalty = (int) tok.nval;tok.nextToken();
+
+                        day = (int) tok.nval;
+                        tok.nextToken();
+                        tok.nextToken();
+                        month = (int) tok.nval;
+                        tok.nextToken();
+                        tok.nextToken();
+                        year = (int) tok.nval;
+                        tok.nextToken();
+                        tok.nextToken();
+                        hour = (int) tok.nval;
+                        tok.nextToken();
+                        tok.nextToken();
+                        minutes = (int) tok.nval;
+                        tok.nextToken();
+                        tok.nextToken();
+                        seconds = (int) tok.nval;
+                        tok.nextToken();
+                        tok.nextToken();
+                        duration = (int) tok.nval;
+                        tok.nextToken();
+                        tok.nextToken();
+                        penalty = (int) tok.nval;
+                        tok.nextToken();
 //                        System.out.println(day+":"+month+":"+year+", "+hour+":"+minutes+":"+seconds+", "+duration+", "+penalty);
-                        Date examDateAndTime = new Date(year-1900,month-1,day,hour,minutes,seconds);
+                        Date examDateAndTime = new Date(year - 1900, month - 1, day, hour, minutes, seconds);
 //                        System.out.println("examDateAndTime = "+examDateAndTime.toLocaleString());
-                        addTimeSlot(tCount++, examDateAndTime, duration, penalty);                      
+                        addTimeSlot(tCount++, examDateAndTime, duration, penalty);
                         break;
                 }
             }
@@ -569,7 +676,8 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
         double lon = 0.0, lat = 0.0;
         while (!fnd) {
             if ((tok.sval != null) && ((tok.sval.compareTo("Faculties") == 0))) {
-                tok.nextToken();tok.nextToken();                
+                tok.nextToken();
+                tok.nextToken();
                 numberOfFaculties = (int) tok.nval;
 //                System.out.println("Finished Reading Campuses.");
                 fnd = true;
@@ -579,8 +687,11 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
                     case StreamTokenizer.TT_EOL:
                         break;
                     case StreamTokenizer.TT_NUMBER:
-                        lon = tok.nval;tok.nextToken();tok.nextToken();                                                
-                        lat = tok.nval;tok.nextToken();                        
+                        lon = tok.nval;
+                        tok.nextToken();
+                        tok.nextToken();
+                        lat = tok.nval;
+                        tok.nextToken();
 //                        System.out.println("Long: "+lon+"\nLat: "+lat);
                         addCampus(cCount++, lon, lat);
                         break;
@@ -601,7 +712,8 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
         double lon = 0.0, lat = 0.0;
         while (!fnd) {
             if ((tok.sval != null) && ((tok.sval.compareTo("Rooms") == 0))) {
-                tok.nextToken();tok.nextToken();                
+                tok.nextToken();
+                tok.nextToken();
                 numberOfRooms = (int) tok.nval;
 //                System.out.println("Finished Reading Facuties.");
                 fnd = true;
@@ -611,10 +723,17 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
                     case StreamTokenizer.TT_EOL:
                         break;
                     case StreamTokenizer.TT_NUMBER:
-                        camp = (int) tok.nval;tok.nextToken();tok.nextToken();
-                        dToCamp = (int) tok.nval;tok.nextToken();tok.nextToken();                        
-                        lon = tok.nval;tok.nextToken();tok.nextToken();                                                
-                        lat = tok.nval;tok.nextToken();                        
+                        camp = (int) tok.nval;
+                        tok.nextToken();
+                        tok.nextToken();
+                        dToCamp = (int) tok.nval;
+                        tok.nextToken();
+                        tok.nextToken();
+                        lon = tok.nval;
+                        tok.nextToken();
+                        tok.nextToken();
+                        lat = tok.nval;
+                        tok.nextToken();
                         addFaculty(fCount++, camp, lon, lat, dToCamp);
                         break;
                 }
@@ -649,17 +768,21 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
                     case StreamTokenizer.TT_EOL:
                         break;
                     case StreamTokenizer.TT_NUMBER:
-                        cap = (int) tok.nval;tok.nextToken();tok.nextToken();
-                        
-                        
-                        fac = (int) tok.nval;tok.nextToken();tok.nextToken();
-                        
-                        
-                        dToFac = (int) tok.nval;tok.nextToken();tok.nextToken();
-                        
-                        
-                        penalty = (int) tok.nval;tok.nextToken();
-                        
+                        cap = (int) tok.nval;
+                        tok.nextToken();
+                        tok.nextToken();
+
+                        fac = (int) tok.nval;
+                        tok.nextToken();
+                        tok.nextToken();
+
+                        dToFac = (int) tok.nval;
+                        tok.nextToken();
+                        tok.nextToken();
+
+                        penalty = (int) tok.nval;
+                        tok.nextToken();
+
                         addRoom(cap, rCount++, fac, dToFac, penalty);
                         break;
                 }
@@ -814,6 +937,25 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 //        System.out.println("frontLoadPenalty:"+frontLoadWeight);
     }
 
+    void setExamPriorities() {
+        for (Exam e : examVector) {
+            e.priority = numberOfTimeSlots;
+        }
+
+        for (int i = 0; i < numberOfExams; i++) {
+            for (int j = 0; j < numberOfExams; j++) {
+                if (i == j) {
+                    continue;
+                }
+                if (afterMatrix[i][j] == 1) {
+                    int priority = examVector.get(j).priority;
+                    priority -= 1;
+                    examVector.get(j).priority = priority;
+                }
+            }
+        }
+    }
+
     void generateDistanceMatrices() {
         for (int i = 0; i < numberOfRooms; i++) {
             for (int j = i; j < numberOfRooms; j++) {
@@ -883,6 +1025,7 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
             examVector.add(new Exam(line, examDuration));
         }
     }
+
     //tCount, examDateAndTime, duration, penalty
 //    void addTimeSlot(int id, int d, int p, int dur, int pen) {
     void addTimeSlot(int id, Date date, int dur, int pen) {
@@ -903,154 +1046,133 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
     }
 
     boolean allocateTimeSlots() {
-        try{         
-            int numberOfColors=0;
-           //        ArrayList<TimeSlot> availableTimeSlots = new ArrayList<>();
+        try {
+            int numberOfColors = 0;
+            //        ArrayList<TimeSlot> availableTimeSlots = new ArrayList<>();
 //        availableTimeSlots.addAll(timeslotVector);
 //        System.out.println("availableTimeSlots.size()="+availableTimeSlots.size());
 //        System.out.println("timeslotVector.size()="+timeslotVector.size());
-         for (int t = 0; t < timeslotVector.size(); t++) {
+            for (int t = 0; t < timeslotVector.size(); t++) {
 //        for (int t = 0; t < availableTimeSlots.size(); t++) {
 //            availableTimeSlots.get(t).examList.clear();
-            timeslotVector.get(t).examList.clear();
-        }
+                timeslotVector.get(t).examList.clear();
+            }
 //          coloredGraph  = new LargestDegreeFirstColoring(exGraph).getColoring();
 //        coloredGraph  = new GreedyColoring(exGraph).getColoring();
 //        int chromaticNumber = new BrownBacktrackColoring(exGraph).getChromaticNumber();            
 //          coloredGraph  = new BrownBacktrackColoring(exGraph).getColoring();
 //        coloredGraph = new RandomGreedyColoring(exGraph).getColoring();
-        coloredGraph = new SaturationDegreeColoring(exGraph).getColoring();
-        
-        numberOfColors = coloredGraph.getNumberColors();
-        System.out.println("Number of Timeslots = "+numberOfTimeSlots);
-        System.out.println("Chromatic Number = "+numberOfColors);
-        if(numberOfColors<=numberOfTimeSlots){
-            System.out.println("Solution exist");
-        }
-        else{
-            System.out.println("Solution doesn't exist");
-            return false;
-        }
+            coloredGraph = new SaturationDegreeColoring(exGraph).getColoring();
+
+            numberOfColors = coloredGraph.getNumberColors();
+            System.out.println("Number of Timeslots = " + numberOfTimeSlots);
+            System.out.println("Chromatic Number = " + numberOfColors);
+            if (numberOfColors <= numberOfTimeSlots) {
+                System.out.println("Solution exist");
+            } else {
+                System.out.println("Solution doesn't exist");
+                return false;
+            }
 //        coloredGraph = new ColorRefinementAlgorithm(exGraph, new GreedyColoring(exGraph).getColoring()).getColoring();
 //        System.out.println("Number Colors = "+coloredGraph.getNumberColors());
-        
+
 //        for (int i = 0; i < examVector.size(); i++) {
-            for(Exam exam : examVector){
-            //int allocatedTime = ;
-            TimeSlot allocatedTime = timeslotVector.get((int) coloredGraph.getColors().get(exam.examId));
+            for (Exam exam : examVector) {
+                //int allocatedTime = ;
+                int allocatedTime = (int) coloredGraph.getColors().get(exam.examId);
 //            Exam exam = examVector.get(i);
 //            System.out.println("allocatedTime="+allocatedTime);
 //            e.setTimeSlot(availableTimeSlots.get(allocatedTime));
 //            availableTimeSlots.get(allocatedTime).addExam(e);
 //            exam.setTimeSlot(allocatedTime);   
-            examVector.get(exam.examId).setTimeSlot(allocatedTime);
-            timeslotVector.get(allocatedTime.id).addExam(exam.examId);
+                examVector.get(exam.examId).setTimeSlot(allocatedTime);
+                timeslotVector.get(allocatedTime).addExam(exam.examId);
 //            System.out.println("Exam "+examVector.get(i).examId+" @ Timeslot "+examVector.get(i).timeslot.id);                        
-        }
-        
+            }
+
 //        for(int t=0;t<timeslotVector.size();t++)
 //        {
 //            System.out.println("Timeslot "+timeslotVector.get(t).id+" has "+timeslotVector.get(t).examList.size()+" exams");
 //        }
-
 //        for(int t=0;t<availableTimeSlots.size();t++)
 //        {
 //            System.out.println("Timeslot "+availableTimeSlots.get(t).id+" has "+availableTimeSlots.get(t).examList.size()+" exams");
 //        }
-          return true;
-        }
-        catch(Exception e){
+            return true;
+        } catch (Exception e) {
             System.out.println("Cannot Allocate Timeslots");
             return false;
         }
     }
 
     boolean allocateRooms(ArrayList rooms) {
-        class ExamComparator implements Comparator<Exam> {
-
-            @Override
-            public int compare(Exam a, Exam b) {
-                return a.studentsCount < b.studentsCount ? -1 : a.studentsCount == b.studentsCount ? 0 : 1;
-            }
-        }
-
-        class RoomComparator implements Comparator<Room> {
-
-            @Override
-            public int compare(Room a, Room b) {
-                return a.capacity < b.capacity ? -1 : a.capacity == b.capacity ? 0 : 1;
-            }
-        }
-        
-        try{
+        try {
             //        System.out.println("\n\nROOM ALLOCATION FOR NEW SOLUTION:");
-        Map<Integer,ArrayList> freeTimeslotRoomMap = new HashMap();
+            Map<Integer, ArrayList> freeTimeslotRoomMap = new HashMap();
 //        ArrayList<Exam> allocatedExams = new ArrayList();
-        ArrayList<Exam> unAllocatedExams = new ArrayList();
-        ArrayList<Exam> mainUnAllocatedExams = new ArrayList();
-        ArrayList<Room> tmpRoomVector = new ArrayList();
-        int overallCapacity=0;
-        for(Room rm:roomVector){
-            overallCapacity+=rm.capacity;
-        }
-        tmpRoomVector.addAll(roomVector);
-        Collections.sort(tmpRoomVector, new RoomComparator().reversed());
+            ArrayList<Exam> unAllocatedExams = new ArrayList();
+            ArrayList<Exam> mainUnAllocatedExams = new ArrayList();
+            ArrayList<Room> tmpRoomVector = new ArrayList();
+            int overallCapacity = 0;
+            for (Room rm : roomVector) {
+                overallCapacity += rm.capacity;
+            }
+            tmpRoomVector.addAll(roomVector);
+            Collections.sort(tmpRoomVector, new RoomComparator().reversed());
 //        for(int r =0; r<tmpRoomVector.size();r++){
 //            System.out.println("Room "+tmpRoomVector.get(r).roomId+". Capacity = "+tmpRoomVector.get(r).capacity);
 //        } 
-        for(TimeSlot tmpT:timeslotVector){
+            for (TimeSlot tmpT : timeslotVector) {
 //        for (int t = 0; t < timeslotVector.size(); t++) {
 //            if (timeslotVector.get(t).examList.size() <= 0) {
 //                continue;
 //            }            
-            int enrollment=0;
-            for(Exam e:tmpT.examList){
-                enrollment+=e.studentsCount;
-            }
-            
-            System.out.println("Total Room Capacity = "+overallCapacity);
-            System.out.println("Total students assigned to to timslot "+tmpT.id+" = "+enrollment);
-            tmpRoomVector.clear();
-            tmpRoomVector.addAll(roomVector);
-            
-            Collections.sort(tmpRoomVector, new RoomComparator().reversed());
-                       
+                int enrollment = 0;
+                for (Exam e : tmpT.examList) {
+                    enrollment += e.studentsCount;
+                }
+
+//            System.out.println("Total Room Capacity = "+overallCapacity);
+//            System.out.println("Total students assigned to timeslot "+tmpT.id+" = "+enrollment);
+                tmpRoomVector.clear();
+                tmpRoomVector.addAll(roomVector);
+
+                Collections.sort(tmpRoomVector, new RoomComparator().reversed());
+
 //            TimeSlot tmpT = timeslotVector.get(t);
 //            System.out.println("\nNow in Timeslot "+tmpT.id+" having "+tmpT.examList.size()+" exams.");
-
-            ArrayList<Exam> tmpExamVector = new ArrayList();
-            tmpExamVector.addAll(tmpT.examList);
-            Collections.sort(tmpExamVector, new ExamComparator().reversed());
+                ArrayList<Exam> tmpExamVector = new ArrayList();
+                tmpExamVector.addAll(tmpT.examList);
+                Collections.sort(tmpExamVector, new ExamComparatorByEnrollment().reversed());
 //            for(int e =0; e<tmpExamVector.size();e++)
 //            {
 //                System.out.println("Exam "+tmpExamVector.get(e).examId+". Enrollment = "+tmpExamVector.get(e).studentsCount);                
 //            } 
 
-            int e = 0;
-            while (e < tmpExamVector.size()) {                
-                //System.out.println("Allocating rooms to "+tmpExamVector.size()+" exams...");
-                int r = 0;
+                int e = 0;
+                while (e < tmpExamVector.size()) {
+                    //System.out.println("Allocating rooms to "+tmpExamVector.size()+" exams...");
+                    int r = 0;
 
-                //System.out.println("Now in Exam "+tmpExamVector.get(e).examId);
-                while (tmpRoomVector.size() > 0 && r < tmpRoomVector.size() && (tmpExamVector.size() > 0) && e < tmpExamVector.size()) {
-                    //System.out.println("\nSearching for room to exam "+tmpExamVector.get(0).examId);
-                    Exam tmpE = tmpExamVector.get(e);
-                    Room tmpR = tmpRoomVector.get(r);
-                    if (tmpE.studentsCount <= tmpR.capacity) {
+                    //System.out.println("Now in Exam "+tmpExamVector.get(e).examId);
+                    while (tmpRoomVector.size() > 0 && r < tmpRoomVector.size() && (tmpExamVector.size() > 0) && e < tmpExamVector.size()) {
+                        //System.out.println("\nSearching for room to exam "+tmpExamVector.get(0).examId);
+                        Exam tmpE = tmpExamVector.get(e);
+                        Room tmpR = tmpRoomVector.get(r);
+                        if (tmpE.studentsCount <= tmpR.capacity) {
 //                        tmpE.setRoom(tmpR);
-                        //System.out.println("Exam "+tmpE.examId+" has been set to room "+tmpR.roomId);
+                            //System.out.println("Exam "+tmpE.examId+" has been set to room "+tmpR.roomId);
 //                        allocatedExams.add(tmpE);
-                        examVector.get(tmpE.examId).setRoom(tmpR.roomId);//System.out.println("Removing exam "+tmpE.examId);
-                        roomVector.get(r).allocateExam(tmpE.examId);
-                        tmpExamVector.remove(tmpE);//System.out.println("tmpExamVector now has "+tmpExamVector.size()+" exams");
-                                                  //System.out.println("Removing room "+tmpR.roomId);
-                        tmpRoomVector.remove(tmpR);//System.out.println("tmpRoomVector now has "+tmpRoomVector.size()+" rooms");
-                    } 
-                    else{
-                        r++;
-                    }                                                           
-                }
-                
+                            examVector.get(tmpE.examId).setRoom(tmpR.roomId);//System.out.println("Removing exam "+tmpE.examId);
+                            roomVector.get(r).allocateExam(tmpE.examId);
+                            tmpExamVector.remove(tmpE);//System.out.println("tmpExamVector now has "+tmpExamVector.size()+" exams");
+                            //System.out.println("Removing room "+tmpR.roomId);
+                            tmpRoomVector.remove(tmpR);//System.out.println("tmpRoomVector now has "+tmpRoomVector.size()+" rooms");
+                        } else {
+                            r++;
+                        }
+                    }
+
 //                if(tmpRoomVector.size()>0){
 //                        System.out.print("For timeslot "+t+", freeRoom(s) =");
 //                        int freeSpace = 0;
@@ -1063,21 +1185,20 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 //                        }
 //                        System.out.println("total free Space= "+freeSpace);
 //                }                                
-                
-                if (r >= tmpRoomVector.size() && e < tmpExamVector.size()) {
+                    if (r >= tmpRoomVector.size() && e < tmpExamVector.size()) {
 //                    System.out.println("...skipping exam");//+tmpExamVector.get(e).examId+"\n");// for exam "+tmpExamVector.get(0).examId+" with "+tmpExamVector.get(0).studentsCount);
-                    unAllocatedExams.add(tmpExamVector.get(e));
+                        unAllocatedExams.add(tmpExamVector.get(e));
 //                    System.out.println("Allocated = "+allocatedExams.size());                    
 //                    System.out.println("Unallocated = "+unAllocatedExams.size());
-                    e++;                   
-                }                
-            }
-            
+                        e++;
+                    }
+                }
+
 //            System.out.println("****free rooms ="+tmpRoomVector.size()); 
-            ArrayList tmpFreeRooms = new ArrayList(tmpRoomVector);
-            if(tmpRoomVector.size()>0){
-                freeTimeslotRoomMap.put(tmpT.id, tmpFreeRooms);
-            }
+                ArrayList tmpFreeRooms = new ArrayList(tmpRoomVector);
+                if (tmpRoomVector.size() > 0) {
+                    freeTimeslotRoomMap.put(tmpT.id, tmpFreeRooms);
+                }
 //            System.out.println("\nfreeTimeslotRoomMap (before re-allocation): ");
 //            for(Map.Entry<Integer, ArrayList> entry : freeTimeslotRoomMap.entrySet()){
 //                System.out.print("Timeslot "+timeslotVector.get(entry.getKey()).id+" Free Rooms:");
@@ -1087,7 +1208,7 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 //                }
 //                System.out.println();
 //            }                        
-            
+
 //            int currFreeStuds=0;
 //            if(unAllocatedExams.size()>0){
 //                System.out.print("unAllocatedExams= ");
@@ -1100,11 +1221,10 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 //                }
 //                System.out.println("total unallocated studs = "+currFreeStuds);
 //            }
-            
-            mainUnAllocatedExams.addAll(unAllocatedExams);
-            unAllocatedExams.clear();
-        }
-        
+                mainUnAllocatedExams.addAll(unAllocatedExams);
+                unAllocatedExams.clear();
+            }
+
 //        System.out.println("1ST PASS ALLOCATION");
 //        for(int e =0; e<examVector.size();e++)
 //        {
@@ -1117,23 +1237,21 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 //                    +" in timeslot "+tmpE.timeslot.id);              
 //            }
 //        }
-
-        //RE-ALLOCATING UNALLOCATED EXAMS - version 2
+            //RE-ALLOCATING UNALLOCATED EXAMS - version 2
 //        System.out.println("RE-ALLOCATING UNALLOCATED EXAMS");
 //        System.out.println("List of 2nd pass unallocated exams:");
 //        for(Exam ex:mainUnAllocatedExams){
 //            System.out.print(ex.examId+" ");
 //        }System.out.println();
-          
-        boolean examAllocated;
+            boolean examAllocated;
 //        boolean cannotAllocateTime;
-        Collections.sort(mainUnAllocatedExams,new ExamComparator().reversed());
-        ArrayList<Exam> pass2Unallocated = new ArrayList();
-        for(Exam exam1:mainUnAllocatedExams){
+            Collections.sort(mainUnAllocatedExams, new ExamComparatorByEnrollment().reversed());
+            ArrayList<Exam> pass2Unallocated = new ArrayList();
+            for (Exam exam1 : mainUnAllocatedExams) {
 //        for(int i=0; i<mainUnAllocatedExams.size();i++){              
 //            Exam exam1 = mainUnAllocatedExams.get(0);
 //            System.out.println("Attempting to allocate exam..."+exam1.examId);
-            
+
 //            for(Integer time : freeTimeslotRoomMap.keySet()){
 //                System.out.println("Free Rooms in Timeslot "+time+": ");
 //                int j=0;
@@ -1142,83 +1260,82 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 //                }
 //                System.out.println();
 //            }
-            ArrayList<Integer> freeTimeslots = new ArrayList(freeTimeslotRoomMap.keySet());
-            
+                ArrayList<Integer> freeTimeslots = new ArrayList(freeTimeslotRoomMap.keySet());
+
 //            cannotAllocateTime = false;            
-            examAllocated = false;
-            boolean conflictFound;
-            for(int timeslot : freeTimeslots){
+                examAllocated = false;
+                boolean conflictFound;
+                for (int newTimeslot : freeTimeslots) {
 //            if(freeTimeslots.size()>0){
 //                int timeslotIndex=0;
 //                int timeslot = freeTimeslots.get(timeslotIndex);
 //                System.out.println("\tTrying Timeslot.."+timeslot); 
-                conflictFound=false;
-                for(Exam exam2 : timeslotVector.get(timeslot).examList){                
+                    conflictFound = false;
+                    for (Exam exam2 : timeslotVector.get(newTimeslot).examList) {
 //                for(int j = 0;j<examVector.size();j++){                
 //                    Exam exam2 = examVector.get(j);
 //                    if(timeslot!=exam2.timeslot.id)continue; 
 //                    int exam1ID = exam1.examId;
 //                    int exam2ID = exam2.examId;
 //                    int conf = conflictMatrix[exam1ID][exam2ID];
-                    if(conflictMatrix[exam1.examId][exam2.examId]!=0){
+                        if (conflictMatrix[exam1.examId][exam2.examId] != 0) {
 //                        System.out.println("\tExam "+(exam1ID+1)+" conflicts with "+" Exam "+(exam2ID+1)
 //                                +" @ slots "+timeslot+" & "+exam2.timeslot.id+" resp.\t");
 //                        System.out.println("\tconflictMatrix["+(exam1ID+1)+"]["+(exam2ID+1)+"]= "+conf);
-                        conflictFound=true;
-                        break;
-                    }                                      
-                }
-                if(conflictFound){
-                    continue;
-                }
-                else{
+                            conflictFound = true;
+                            break;
+                        }
+                    }
+                    if (conflictFound) {
+                        continue;
+                    } else {
 //                    boolean roomAllocated=false;
 //                    boolean noRoom=false;
-                    ArrayList<Room> freeRooms = freeTimeslotRoomMap.get(timeslot);
-                    Collections.sort(freeRooms, new RoomComparator().reversed());                    
-                    for(Room rm : freeRooms){
-                        Room selectedRoom = roomVector.get(rm.roomId);
-                        if(exam1.studentsCount<=selectedRoom.capacity){
+                        ArrayList<Room> freeRooms = freeTimeslotRoomMap.get(newTimeslot);
+                        Collections.sort(freeRooms, new RoomComparator().reversed());
+                        for (Room rm : freeRooms) {
+                            Room selectedRoom = roomVector.get(rm.roomId);
+                            if (exam1.studentsCount <= selectedRoom.capacity) {
 //                            System.out.println("\tRoom "+rm.roomId+" is suitable.");
-                            TimeSlot oldTimeslot = exam1.timeslot;
-                            TimeSlot newTimeslot = timeslotVector.get(timeslot);
-                            timeslotVector.get(oldTimeslot.id).removeExam(exam1.examId);
-                            timeslotVector.get(newTimeslot.id).addExam(exam1.examId);
-                            
-                            examVector.get(exam1.examId).setTimeSlot(newTimeslot);
-                            examVector.get(exam1.examId).setRoom(rm.roomId);
-                            
-                            roomVector.get(rm.roomId).allocateExam(exam1.examId);
-                                                        
+                                int oldTimeslot = exam1.timeslot.id;
+//                            TimeSlot newTimeslot = timeslotVector.get(timeslot);
+                                timeslotVector.get(oldTimeslot).removeExam(exam1.examId);
+                                timeslotVector.get(newTimeslot).addExam(exam1.examId);
+
+                                examVector.get(exam1.examId).setTimeSlot(newTimeslot);
+                                examVector.get(exam1.examId).setRoom(rm.roomId);
+
+                                roomVector.get(rm.roomId).allocateExam(exam1.examId);
+
 //                            System.out.println("\tExam "+exam1.examId+" has been set to room "
 //                                    +exam1.room.roomId+" @ Timeslot "+exam1.timeslot.id);
 //                            freeTimeslotRoomMap.get(timeslot).remove(randRoomIndex);
-                            freeTimeslotRoomMap.get(timeslot).remove(0);
-                            
+                                freeTimeslotRoomMap.get(newTimeslot).remove(0);
+
 //                            mainUnAllocatedExams.remove(exam1);
 //                            System.out.println("\tRooms remaining: "+freeTimeslotRoomMap.get(timeslot).size());                            
-                            if(freeTimeslotRoomMap.get(timeslot).size()<=0){
-                                freeTimeslotRoomMap.remove(timeslot);
+                                if (freeTimeslotRoomMap.get(newTimeslot).size() <= 0) {
+                                    freeTimeslotRoomMap.remove(newTimeslot);
 //                                System.out.println("\tNo more rooms in timeslot "+timeslot+". Timeslot removed");
 //                                System.out.println("\tTimeslots remaining "+freeTimeslotRoomMap.size());
-                            }
-                            examAllocated = true;
+                                }
+                                examAllocated = true;
 //                            roomAllocated=true;                            
-                        }
-                        if(examAllocated){
-                            break;
-                        }
+                            }
+                            if (examAllocated) {
+                                break;
+                            }
 //                        else{
 ////                            System.out.println("\tRoom not suitable. ");
 ////                            System.out.println("\tExam "+exam1.examId+"'s enrollment = "+exam1.studentsCount+". But Room"+rm.roomId+"'s capacity = "+rm.capacity);
 //                            roomIndex++;
 ////                            System.out.println("\tTrying again...");           
 //                        }
+                        }
                     }
-                }
-                if(examAllocated){
-                    break;
-                }
+                    if (examAllocated) {
+                        break;
+                    }
 //                boolean roomAllocated=false;
 //                boolean noRoom=false;
 //                while(true){
@@ -1310,12 +1427,12 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 //                    }
 //                }                
 //            }                
+                }
+                if (!examAllocated) {
+                    pass2Unallocated.add(exam1);
+                }
             }
-            if(!examAllocated){
-                pass2Unallocated.add(exam1);
-            }
-        } 
-        
+
 //        System.out.println("2ND PASS ALLOCATION");
 //        for(int e =0; e<examVector.size();e++)
 //        {
@@ -1328,75 +1445,73 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 //                    +" in timeslot "+tmpE.timeslot.id);                
 //            }
 //        }
-        
-        //SHARED ROOM ALLOCATION
+            //SHARED ROOM ALLOCATION
 //        System.out.println("THIRD PASS ROOM ALLOCATION WITH SHARED ROOMS");
-        ArrayList<Exam> pass3Unallocated = new ArrayList();
+            ArrayList<Exam> pass3Unallocated = new ArrayList();
 //        pass3Unallocated.addAll(thirdPassUnallocated);
 //        System.out.println("List of unallocated exams:");
 //        for(Exam ex:pass2Unallocated){
 //            System.out.print(ex.examId+" ");
 //        }System.out.println();
-        for(Exam exam1:pass2Unallocated){
-            boolean allocated = false;
+            for (Exam exam1 : pass2Unallocated) {
+                boolean allocated = false;
 //            System.out.println("Third attempt to find room for \n\tExam "+exam1.examId
 //                    +" previously in Timeslot "+exam1.timeslot.id
 //                    +" and Room NULL");
-            for(TimeSlot timeS:timeslotVector){   
-                
+                for (TimeSlot timeS : timeslotVector) {
+
 //                System.out.print("\tChecking Timeslot "+timeS.id+" for conflicts....");
-                boolean conflict=false;
-                for(Exam exam2:timeS.examList){
+                    boolean conflict = false;
+                    for (Exam exam2 : timeS.examList) {
 //                    System.out.print("\tconflict between exams "+exam1.examId+" and "+exam2.examId+"?...");
-                    if(conflictMatrix[exam1.examId][exam2.examId]!=0){
-                        conflict = true;
+                        if (conflictMatrix[exam1.examId][exam2.examId] != 0) {
+                            conflict = true;
 //                        System.out.print("\tconflict between exams "+exam1.examId+" and "+exam2.examId+"?...");                      
 //                        System.out.println(" = "+conflictMatrix[exam1.examId][exam2.examId]);
-                        break;
-                    }  
+                            break;
+                        }
 //                    System.out.println("none found.");
-                }
-                if(!conflict){
+                    }
+                    if (!conflict) {
 //                    System.out.println("None found in timeslot "+timeS.id);
-                   ArrayList<Room> allRooms = new ArrayList();
-                   allRooms.addAll(roomVector);
-                   Collections.shuffle(allRooms);
-                   for(Room room:allRooms){
+                        ArrayList<Room> allRooms = new ArrayList();
+                        allRooms.addAll(roomVector);
+                        Collections.shuffle(allRooms);
+                        for (Room room : allRooms) {
 //                       if(room.getExams(timeS.id).size()>2)continue;
 //                       System.out.print("\tIs room "+room.roomId+" suitable?....");
-                        if(exam1.studentsCount<=room.getFreeSeats(timeS.id)){
+                            if (exam1.studentsCount <= room.getFreeSeats(timeS.id)) {
 //                            System.out.println("Yes. Allocating");
-                            TimeSlot oldTimeslot = exam1.timeslot;
-                            TimeSlot newTimeslot = timeslotVector.get(timeS.id);
-                            timeslotVector.get(oldTimeslot.id).removeExam(exam1.examId);
-                            timeslotVector.get(newTimeslot.id).addExam(exam1.examId);
-                            
-                            examVector.get(exam1.examId).setTimeSlot(newTimeslot);
-                            examVector.get(exam1.examId).setRoom(room.roomId);
-                            
-                            roomVector.get(room.roomId).allocateExam(exam1.examId);                            
+                                int oldTimeslot = exam1.timeslot.id;
+                                int newTimeslot = timeS.id;
+                                timeslotVector.get(oldTimeslot).removeExam(exam1.examId);
+                                timeslotVector.get(newTimeslot).addExam(exam1.examId);
+
+                                examVector.get(exam1.examId).setTimeSlot(newTimeslot);
+                                examVector.get(exam1.examId).setRoom(room.roomId);
+
+                                roomVector.get(room.roomId).allocateExam(exam1.examId);
 //                            System.out.println("\tExam "+exam1.examId
 //                                    +" now in Timeslot "+exam1.timeslot.id
 //                                    +" @ Room "+exam1.room.roomId);                                                    
-                            allocated = true;                            
-                            break;
-                        }
-                        else{
+                                allocated = true;
+                                break;
+                            } else {
 //                            System.out.println("No. Trying next room");
+                            }
                         }
                     }
-                }
-                if(allocated){                    
-                    break;
-                }
+                    if (allocated) {
+                        break;
+                    }
 //                System.out.println("\tTrying next timeslot");
-            }
-            if(!allocated){
-                pass3Unallocated.add(exam1);
+                }
+                if (!allocated) {
+                    pass3Unallocated.add(exam1);
 //                System.out.println("\tCannot allocate exam "+exam1.examId+". Must be split");
+                }
             }
-        }
-        
+
 //        System.out.println("\n****ALLOCATION SUMMARY*****");        
 //        
 //        for(TimeSlot tS : timeslotVector){
@@ -1411,7 +1526,6 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 //                }                               
 //            }            
 //        }
-
 //        System.out.println("Room Vector -->");
 //        for(Room r:roomVector){
 //            System.out.println("Room "+r.roomId);
@@ -1423,7 +1537,6 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 //                System.out.println(".");
 //            }            
 //        }
-
 //        System.out.println("\nfreeTimeslotRoomMap (after reallocation) size = "+freeTimeslotRoomMap.size());
 //        for(Map.Entry<Integer, ArrayList> entry : freeTimeslotRoomMap.entrySet()){
 //            System.out.print("Timeslot "+timeslotVector.get(entry.getKey()).id+" Free Rooms:");
@@ -1433,25 +1546,21 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 //            }
 //            System.out.println();
 //        } 
-            
 //        System.out.println("3RD PASS ALLOCATION");
-        int freeSeats=0;
-        for(int e =0; e<examVector.size();e++)
-        {
-            Exam tmpE = (Exam)examVector.get(e);
-            
-            if(!pass3Unallocated.contains(tmpE))
-            {
-                int seats = tmpE.room.capacity-tmpE.studentsCount;                
+            int freeSeats = 0;
+            for (int e = 0; e < examVector.size(); e++) {
+                Exam tmpE = (Exam) examVector.get(e);
+
+                if (!pass3Unallocated.contains(tmpE)) {
+                    int seats = tmpE.room.capacity - tmpE.studentsCount;
 //                System.out.println("Exam "+tmpE.examId
 //                    +" has been set to room "+tmpE.room.roomId                                            
 //                    +" in timeslot "+tmpE.timeslot.id
 //                    +" with "+(seats)+" free seats");
-                freeSeats += seats;
+                    freeSeats += seats;
+                }
             }
-        }
-        
-        
+
 //        System.out.println("UNALLOCATED EXAMS:");
 //        Collections.sort(pass3Unallocated, new ExamComparator().reversed());
 //        int unAllocatedStudents=0;
@@ -1463,11 +1572,10 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 ////        System.out.println("TOTAL UNALLOCATED STUDENTS = "+unAllocatedStudents);
 ////        System.out.println("TOTAL UNUSED SEATS = "+freeSeats); 
             return true;
-        }
-        catch(Exception e){
+        } catch (Exception e) {
             System.out.println("Cannot Allocate Rooms");
             return false;
-        }       
+        }
     }
 
     ArrayList<ArrayList<Integer>> generateTimeTableMatrix() {
@@ -1476,21 +1584,23 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
             randRooms.add(i);
         }
         feasible = allocateTimeSlots();
-        allocateRooms(randRooms);
+//        allocateRooms(randRooms);
 
         ArrayList<Integer> tmpSlots = new ArrayList<>();
         for (int i = 0; i < numberOfTimeSlots; i++) {
             tmpSlots.add(i, -1);
         }//(0,0,0,0,0)
-         //(-1,-1,-1,-1,-1)
-         timetableSolution.clear();
+        //(-1,-1,-1,-1,-1)
+        timetableSolution.clear();
         for (int j = 0; j < examVector.size(); j++) {
             timetableSolution.add(j, new ArrayList<>(tmpSlots));
         }//
 
         for (int i = 0; i < numberOfExams; i++) {
             for (int j = 0; j < numberOfTimeSlots; j++) {
-                if (examVector.get(i).timeslot.id != j)continue;
+                if (examVector.get(i).timeslot.id != j) {
+                    continue;
+                }
                 int room = -1;
                 if (examVector.get(i).room != null) {
                     room = examVector.get(i).room.roomId;
@@ -1502,69 +1612,235 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
         //timetableSolution = 
         return timetableSolution;
     }
-    
-    IntegerMatrixSolution<ArrayList<Integer>> improveInitialSolution(IntegerMatrixSolution<ArrayList<Integer>> solution){
-        IntegerMatrixSolution<ArrayList<Integer>> tmpSolution = new DefaultIntegerMatrixSolution(getListOfExamsPerVariable(), getNumberOfObjectives());
-        IntegerMatrixSolution<ArrayList<Integer>> bestSolution = solution;
-        
-        boolean canContinue = true;        
-        boolean conflict = false;
-        int randomTimeslot;
-        int randomRoom;
-        Map<ArrayList<Integer>,Integer> conflictStatMap = new HashMap();
-        while(canContinue){
-            for(Exam exam1:examVector){                  
-                randomTimeslot = timeslotVector.get((int)(numberOfTimeSlots * Math.random())).id;
-                randomRoom = roomVector.get((int) (numberOfRooms * Math.random())).roomId;
-                tmpSolution.getVariable(exam1.examId).set(randomTimeslot, randomRoom);
 
-                for(Exam exam2:timeslotVector.get(randomTimeslot).examList){
-                    if(conflictMatrix[exam1.examId][exam2.examId]!=0){
-                        ArrayList tmp = new ArrayList();
-                        tmp.add(exam1.examId);
-                        tmp.add(randomTimeslot);
-                        tmp.add(randomRoom);
-                        tmp.add(exam2.examId);
-                        tmp.add(exam2.timeslot.id);
-                        tmp.add(exam2.room.roomId);
-                        if(conflictStatMap.keySet().contains(tmp)){                              
-                            int count = conflictStatMap.get(tmp);
-                            count++;
-                            conflictStatMap.put(tmp, count);
-                        }
-                        else{
-                            conflictStatMap.put(new ArrayList(tmp), 1);
-                        }
-                        conflict=true;
-                    }
-                }
-                if(conflict){
-                    tmpSolution.getVariable(exam1.examId).set(-1, -1);
-                }
-                else{
-                    //evaluate and compare best?
+    IntegerMatrixSolution iteraiveForwardSearch() {
+        IntegerMatrixSolution<ArrayList<Integer>> currentSolution = new DefaultIntegerMatrixSolution(getListOfExamsPerVariable(), getNumberOfObjectives());
+//        IntegerMatrixSolution<ArrayList<Integer>> bestSolution = new DefaultIntegerMatrixSolution(getListOfExamsPerVariable(), getNumberOfObjectives());
+
+        for (int i = 0; i < numberOfExams; i++) {
+            ArrayList tmp = new ArrayList(numberOfTimeSlots);
+            for (int j = 0; j < numberOfTimeSlots; j++) {
+                tmp.add(-1);
+            }
+            currentSolution.setVariable(i, tmp);
+        }
+
+//        boolean stoppingConditionReached = false;
+//        boolean conflict = false;
+        int selectedTimeslot;
+        int selectedRoom;
+
+        PriorityQueue<Exam> examQueue = new PriorityQueue(numberOfExams, new ExamComparatorByPriority());
+        PriorityQueue<TimeslotRoomPair> timeslotRoomQueue = new PriorityQueue(new TimeslotRoomPairComparator());
+        Map<Integer, PriorityQueue<TimeslotRoomPair>> conflictMap = new HashMap<>();
+
+        for (int t = 0; t < numberOfTimeSlots; t++) {
+            for (int r = 0; r < numberOfRooms; r++) {
+                timeslotRoomQueue.add(new TimeslotRoomPair(t, r));
+            }
+        }
+
+        for (int i = 0; i < numberOfExams; i++) {
+            conflictMap.put(i, timeslotRoomQueue);
+        }
+//        System.out.println("Initial timeslotRoomQueue (t,r):");
+//        for(TimeslotRoomPair timeRoomPair:timeslotRoomQueue){ 
+//                System.out.println("("+timeRoomPair.timeslot1+", "+timeRoomPair.room1+"). Priority = "+timeRoomPair.priority);
+//            }
+        setExamPriorities();
+        examQueue.addAll(examVector);
+        for (Room r : roomVector) {
+            r.examList.clear();
+        }
+        for (TimeSlot t : timeslotVector) {
+            t.examList.clear();
+        }
+
+//        System.out.println("examQueue = "+examQueue);
+        //Pick most difficult-to-assign exam
+//        System.out.println("currentSolution : "+currentSolution.getVariables());
+        while (examQueue.size() > 0) {
+//            System.out.println("\n\t\t-->examQueue.size():"+examQueue.size()+"<------");
+//            for(Exam e:examQueue){
+//                System.out.println("\t\tExam "+e.examId+". Priority = "+e.priority);
+//            }            
+            int minPriority = examQueue.peek().priority;
+            ArrayList<Exam> tmpExams = new ArrayList();
+            for(Exam ex:examQueue){
+                if(ex.priority<=minPriority){
+                    tmpExams.add(ex);
                 }
             }
-        }        
-        return solution;
+            int examsCount = tmpExams.size();
+            int randE;
+            if(examsCount<=1){
+                randE = 0;
+            }else{
+                randE = new Random().nextInt(examsCount-1);
+            } 
+            Exam exam1 = tmpExams.get(randE);
+            examQueue.remove(exam1);
+//            Exam exam1 = examQueue.poll();
+            int studsCount = exam1.studentsCount;
+            System.out.println("Exam " + exam1.examId + " polled with " + studsCount + " students. " + examQueue.size() + " exams remaining.");
+
+//            System.out.print("\t timeslotRoomQueue ("+conflictMap.get(exam1.examId).size()+"):\n\t\t");
+//            for(TimeslotRoomPair trP:conflictMap.get(exam1.examId)){
+//                System.out.println("("+trP.timeslot1+","+trP.room1+")");
+//            }
+
+//            TimeslotRoomPair timeRoomPair = conflictMap.get(exam1.examId).poll();
+            
+            int minRank = conflictMap.get(exam1.examId).peek().rank;
+            ArrayList<TimeslotRoomPair> tmpValues = new ArrayList();
+            for(TimeslotRoomPair tmRmPr : conflictMap.get(exam1.examId)){
+                if(tmRmPr.rank<=minRank){
+                    tmpValues.add(tmRmPr);
+                }
+            }  
+            System.out.println("tmpValues.size()= "+tmpValues.size());
+            
+            int size = tmpValues.size(); 
+            int randV ;
+            if(size<=1){
+                randV = 0;
+            }else{
+                randV = new Random().nextInt(size-1);
+            }                
+            TimeslotRoomPair timeRoomPair = tmpValues.get(randV);
+            conflictMap.get(exam1.examId).remove(timeRoomPair);
+
+            selectedTimeslot = timeRoomPair.timeslot1;
+            selectedRoom = timeRoomPair.room1;
+
+            int rmCap = roomVector.get(selectedRoom).capacity;
+            int frSeats = roomVector.get(selectedRoom).getFreeSeats(selectedTimeslot);
+            System.out.println("\tSelectedTimeslot = " + timeslotVector.get(selectedTimeslot).id);
+            System.out.println("\tselectedRoom = " + roomVector.get(selectedRoom).roomId + " has " + roomVector.get(selectedRoom).getExams(selectedTimeslot).size()
+                    + " exams and " + frSeats + " free seats and capacity " + rmCap);
+
+            //Look for Room Conflicts.             
+//            System.out.println("\tSelectedRoom Cap = "+rCap);
+            ArrayList<Exam> examsInSelRoomAtSelTime = roomVector.get(selectedRoom).getExams(selectedTimeslot);
+            if (studsCount <= rmCap) {
+                if (studsCount > frSeats) {
+                    System.out.println("\tEvicting " + examsInSelRoomAtSelTime.size() + " exams in room " + selectedRoom);
+                    for (Exam e : examsInSelRoomAtSelTime) {
+                        currentSolution.getVariable(e.examId).set(e.timeslot.id, -1);
+                        timeslotVector.get(e.timeslot.id).removeExam(e.examId);
+                        roomVector.get(e.room.roomId).deAllocateExam(e.examId);
+                        examVector.get(e.examId).setTimeSlot(-1);
+                        examVector.get(e.examId).setRoom(-1);
+
+                        examVector.get(e.examId).priority = Integer.MIN_VALUE;
+                        examQueue.offer(examVector.get(e.examId));
+
+                        boolean exists = false;
+                        for (Conflict con : timeRoomPair.conflicts) {
+                            if (con.conflictingExam.examId == e.examId) {
+                                con.evictionCount++;
+                                exists = true;
+                                break;
+                            }
+                        }
+                        if (!exists) {
+                            timeRoomPair.conflicts.add(new Conflict(e, 1));
+                        }
+                        timeRoomPair.computeRank();
+                        conflictMap.get(e.examId).offer(timeRoomPair);
+                    }
+                    System.out.println("\tFree seats now = " + roomVector.get(selectedRoom).getFreeSeats(selectedTimeslot));
+                } else {
+                    //Squat   
+                }
+            } else {
+                //Ban Room
+                timeRoomPair.rank = Integer.MAX_VALUE;
+                conflictMap.get(exam1.examId).offer(timeRoomPair);
+                examQueue.offer(exam1);
+                System.out.println("\tRoom " + selectedRoom + " @ timeslot " + selectedTimeslot + " with capacity = " + rmCap + " not suitable for " + studsCount + " students");
+                continue;
+            }
+
+            ArrayList<Exam> potentialConflict = new ArrayList(timeslotVector.get(selectedTimeslot).examList);
+            for (Exam exam2 : potentialConflict) {
+                if (exam1.examId == exam2.examId) {
+                    continue;
+                }
+                if (conflictMatrix[exam1.examId][exam2.examId] != 0) {
+//                  System.out.println("\t\tConflict with exam "+j+" found.");
+
+                    boolean exists = false;
+                    for (Conflict con : timeRoomPair.conflicts) {
+                        if (con.conflictingExam.examId == exam2.examId) {
+                            con.evictionCount++;
+                            exists = true;
+                            break;
+                        }
+                    }
+                    if (!exists) {
+                        timeRoomPair.conflicts.add(new Conflict(exam2, 1));
+                    }
+                    timeRoomPair.computeRank();
+                    conflictMap.get(exam1.examId).offer(timeRoomPair);
+
+                    System.out.println("\t\tDeallocating exam " + exam2.examId);
+                    currentSolution.getVariable(exam2.examId).set(exam2.timeslot.id, -1);
+
+                    timeslotVector.get(exam2.timeslot.id).removeExam(exam2.examId);
+                    roomVector.get(exam2.room.roomId).deAllocateExam(exam2.examId);
+                    examVector.get(exam2.examId).setTimeSlot(-1);
+                    examVector.get(exam2.examId).setRoom(-1);
+                    examVector.get(exam2.examId).priority = Integer.MIN_VALUE;
+                    examQueue.offer(examVector.get(exam2.examId));
+//                    conflict = true;
+                }
+            }
+
+            //Allocate
+            boolean flag = roomVector.get(selectedRoom).allocateExam(exam1.examId);
+            if (!flag) {
+                timeRoomPair.rank = Integer.MAX_VALUE;
+//                timeslotRoomQueue.offer(timeRoomPair);
+                conflictMap.get(exam1.examId).offer(timeRoomPair);
+                exam1.priority = Integer.MIN_VALUE;
+                examQueue.offer(exam1);
+                System.out.println("\tRoom allocation failed");
+                continue;
+            }
+            currentSolution.getVariable(exam1.examId).set(selectedTimeslot, selectedRoom);
+            examVector.get(exam1.examId).setTimeSlot(selectedTimeslot);
+            examVector.get(exam1.examId).setRoom(selectedRoom);
+            timeslotVector.get(selectedTimeslot).addExam(exam1.examId);
+
+            for (Exam e : examQueue) {
+                e.priority -= 1;
+            }
+//            conflictMap.get(exam1.examId).offer(timeRoomPair);
+            System.out.println("\tAllocated to timeslot " + exam1.timeslot.id + " room " + exam1.room.roomId);//+" value priority = "+timeRoomPair.priority);
+        }
+        for (int i = 0; i < currentSolution.getNumberOfVariables(); i++) {
+            ArrayList exam = currentSolution.getVariable(i);
+            System.out.println("Exam " + i + " is in timeslot " + getTimeslot(exam) + " and room " + getRoom(exam));
+        }
+        return currentSolution;
     }
 
     @Override
     public IntegerMatrixSolution<ArrayList<Integer>> createSolution() {
-        timetableSolution = generateTimeTableMatrix();
-                
-        if(feasible){
-            DefaultIntegerMatrixSolution solution = new DefaultIntegerMatrixSolution(getListOfExamsPerVariable(), getNumberOfObjectives());
-//          System.out.println("Creating solution...");
-            for (int i = 0; i < getLength(); i++) {
-                solution.setVariable(i, timetableSolution.get(i));
-            }
-    //      System.out.println("new solution:"+solution.getVariables());
-            return improveInitialSolution(solution);          
-        }
-        else{
-            return null;
-        }
+//        timetableSolution = generateTimeTableMatrix();
+//
+//        if (feasible) {
+//            DefaultIntegerMatrixSolution solution = new DefaultIntegerMatrixSolution(getListOfExamsPerVariable(), getNumberOfObjectives());
+////          System.out.println("Creating solution...");
+//            for (int i = 0; i < getLength(); i++) {
+//                solution.setVariable(i, timetableSolution.get(i));
+//            }
+        //      System.out.println("new solution:"+solution.getVariables());
+        return iteraiveForwardSearch();
+//        } else {
+//            return null;
+//        }
     }
 
     @Override
@@ -1572,19 +1848,19 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
         double proximityFitness = evaluateProximityFitness(solution);
         double movementFitness = evaluateMovementFitness(solution);                 //movement cost
         double roomUtilizationFitness = evaluateRoomUtilizationFitness(solution);   //room cost
-        
-        double compositeFitness = proximityFitness+movementFitness+roomUtilizationFitness;
+
+        double compositeFitness = proximityFitness + movementFitness + roomUtilizationFitness;
         int itc2007Fitness = evaluateITC2007Fitness(solution);
 
         this.evaluateConstraints(solution);
 //        solution.setObjective(0, proximityFitness);
-        solution.setObjective(1, movementFitness);        
+        solution.setObjective(1, movementFitness);
 //        solution.setObjective(0, roomUtilizationFitness); 
 //        solution.setObjective(0, compositeFitness);
         solution.setObjective(0, itc2007Fitness);
 //        solution.setObjective(1, compositeFitness);
 
-//        System.out.print("Objective(0) =" + solution.getObjective(0));//+" Conflicts = "+solution.getAttribute("CONFLICTS"));
+        System.out.println("Objective(0) =" + solution.getObjective(0) + " Conflicts = " + solution.getAttribute("CONFLICTS"));
 //        System.out.println("Solution = "+solution);
 //        System.out.println("CONFLICTS =" + solution.getAttribute("CONFLICTS")+"\tObjective(1) =" + solution.getObjective(1)+"\tObjective(0) =" + 
 //                solution.getObjective(0));                
@@ -1595,21 +1871,25 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
         double proximity = 0.0;
         for (int i = 0; i < solution.getNumberOfVariables(); i++) {
             int slot1 = getTimeslot(solution.getVariable(i));
-            if(slot1==-1)return Integer.MAX_VALUE;
+            if (slot1 == -1) {
+                return Integer.MAX_VALUE;
+            }
             for (int j = 0; j < solution.getNumberOfVariables(); j++) {
                 if (i == j) {
                     continue;
                 }
                 int slot2 = getTimeslot(solution.getVariable(j));
-                if(slot2==-1)return Integer.MAX_VALUE;
+                if (slot2 == -1) {
+                    return Integer.MAX_VALUE;
+                }
                 if (conflictMatrix[i][j] != 0) {
-                    double prox =  Math.pow(2, (5 - Math.abs(slot1 - slot2)));
-                    double diffFactor = computedDifficulty.get(i)+computedDifficulty.get(j);
-                    proximity += (prox/diffFactor) * conflictMatrix[i][j];
+                    double prox = Math.pow(2, (5 - Math.abs(slot1 - slot2)));
+                    double diffFactor = computedDifficulty.get(i) + computedDifficulty.get(j);
+                    proximity += (prox / diffFactor) * conflictMatrix[i][j];
                 }
             }
         }
-        return proximity/studentMap.size();
+        return proximity / studentMap.size();
     }
 
     public double evaluateMovementFitness(IntegerMatrixSolution<ArrayList<Integer>> solution) {
@@ -1619,13 +1899,13 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 //        System.out.println(solution.getVariables());
         for (Map.Entry<Integer, Student> currStudent : studentMap.entrySet()) {
 //            System.out.println("Student="+currStudent.getKey());
-            for (int e1 = 0; e1 < currStudent.getValue().examList.size(); e1++) {                
+            for (int e1 = 0; e1 < currStudent.getValue().examList.size(); e1++) {
                 Exam cExam = examVector.get(currStudent.getValue().examList.get(e1).examId);
-                
+
                 for (int e2 = e1; e2 < currStudent.getValue().examList.size(); e2++) {
                     if (e1 == e2) {
                         continue;
-                    }                    
+                    }
                     Exam nExam = examVector.get(currStudent.getValue().examList.get(e2).examId);
 //                    if(cExam.room==null)continue;int rm1 = cExam.room.roomId;
 //                    if(nExam.room==null)continue;int rm2 = nExam.room.roomId;
@@ -1633,45 +1913,47 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 //                    fitness2+=roomToRoomDistanceMatrix[rm1-1][rm2-1];
                     int room1 = getRoom(solution.getVariable(cExam.examId));
                     int room2 = getRoom(solution.getVariable(nExam.examId));
-                    if(room1==-1||room2==-1)return Double.MAX_VALUE;
+                    if (room1 == -1 || room2 == -1) {
+                        return Double.MAX_VALUE;
+                    }
                     if (room1 > -1 && room2 > -1) {
 //                        System.out.println("room="+room1+"\nroom2="+room2);
-                        double currCost= roomToRoomDistanceMatrix[room1][room2];
+                        double currCost = roomToRoomDistanceMatrix[room1][room2];
 //                        System.out.println("Movement cost btw exam "+cExam.examId+" in room "+(room1+1)+" to exam "+nExam.examId
 //                            +" in room "+(room2+1)+" is "+currCost);
                         movementCost += currCost;
-                        
-                        
+
                     }
                 }
             }
         }
-        return movementCost/studentMap.size();
+        return movementCost / studentMap.size();
     }
 
     public double evaluateRoomUtilizationFitness(IntegerMatrixSolution<ArrayList<Integer>> solution) {
         //room under-utilization and over-utilization constraint 
-        int roomCap=0,studSize=0;
+        int roomCap = 0, studSize = 0;
         double underUtilization = 0.0;
-        double overUtilization = 0.0;        
+        double overUtilization = 0.0;
 
         for (int i = 0; i < solution.getNumberOfVariables(); i++) {
-            ArrayList<Integer> exam = solution.getVariable(i);                                      
+            ArrayList<Integer> exam = solution.getVariable(i);
             int room = getRoom(exam);
-            if(room==-1)return Double.MAX_VALUE;
+            if (room == -1) {
+                return Double.MAX_VALUE;
+            }
             roomCap = roomVector.get(room).capacity;
-            studSize = examVector.get(i).studentsCount;   
-            if(studSize<roomCap){
-                underUtilization += ( roomCap - studSize);
-            }                                    
-            else if(studSize>roomCap){
+            studSize = examVector.get(i).studentsCount;
+            if (studSize < roomCap) {
+                underUtilization += (roomCap - studSize);
+            } else if (studSize > roomCap) {
                 overUtilization += (studSize - roomCap);
-            }                                                
+            }
 //            else{               
 //                overUtilization+=studSize;
 //            }
         }
-        return (underUtilization+overUtilization)/roomVector.size();
+        return (underUtilization + overUtilization) / roomVector.size();
     }
 
     public int evaluateITC2007Fitness(IntegerMatrixSolution<ArrayList<Integer>> solution) {
@@ -1691,13 +1973,15 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 //                    System.out.print("-->"+getTimeslot(solution.getVariable(currStudent.getValue().examList.get(j).examId - 1))+" ");
                     int timeS1 = getTimeslot(solution.getVariable(examList.get(j).examId));
                     int timeS2 = getTimeslot(solution.getVariable(examList.get(k).examId));
-                    if(timeS1==-1||timeS2==-1)return Integer.MAX_VALUE;
+                    if (timeS1 == -1 || timeS2 == -1) {
+                        return Integer.MAX_VALUE;
+                    }
                     slot1 = timeslotVector.get(timeS1);
                     slot2 = timeslotVector.get(timeS2);
-                    
+
 //                    if (slot1.day == slot2.day) {
                     if (slot1.dateAndTime.getMonth() == slot2.dateAndTime.getMonth()
-                            &&slot1.dateAndTime.getDay()==slot2.dateAndTime.getDay()) {
+                            && slot1.dateAndTime.getDay() == slot2.dateAndTime.getDay()) {
                         if (Math.abs(slot1.id - slot2.id) == 1) {
                             twoInARowCount++;
                         } else if (Math.abs(slot1.id - slot2.id) > 1) {
@@ -1723,8 +2007,8 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
             for (int j = 0; j < solution.getNumberOfVariables(); j++) {
                 //if(getTimeslot(solution.getVariable(j))==timeslotVector.get(i).id-1)
                 if (solution.getVariable(j).get(i) != 0) {
-                    int room = getRoom(solution.getVariable(j)) - 1;
-                    if(room==-1){
+                    int room = getRoom(solution.getVariable(j));
+                    if (room == -1) {
                         nonMixedDurationPenalty = Integer.MAX_VALUE;
                         timeslotPenalty = Integer.MAX_VALUE;
                         roomPenalty = Integer.MAX_VALUE;
@@ -1762,16 +2046,16 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 
         //Frontload
         int frontLoadViolation = 0;
-        
+
         for (int i = 0; i < examVector.size(); i++) {
             if (examVector.get(i).studentsCount >= numberOfLargestExams) {
                 largestExams.add(examVector.get(i).examId);
             }
         }
-        
+
         for (int i = 0; i < solution.getNumberOfVariables(); i++) {
             int timeslot = getTimeslot(solution.getVariable(i));
-            if(timeslot==-1){
+            if (timeslot == -1) {
                 frontLoadViolation = Integer.MAX_VALUE;
                 break;
             }
@@ -1781,6 +2065,14 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
         }
         int frontLoadPenalty = frontLoadViolation * frontLoadWeight;
 
+        System.out.println("\n\ntwoInARowPenalty = " + twoInARowPenalty);
+        System.out.println("twoInADayPenalty = " + twoInADayPenalty);
+        System.out.println("periodSpreadPenalty = " + periodSpreadPenalty);
+        System.out.println("nonMixedDurationPenalty = " + nonMixedDurationPenalty);
+        System.out.println("frontLoadPenalty = " + frontLoadPenalty);
+        System.out.println("timeslotPenalty = " + timeslotPenalty);
+        System.out.println("roomPenalty = " + roomPenalty);
+        System.out.println("\n");
         //ITC2007 Objective Function
         return twoInARowPenalty + twoInADayPenalty + periodSpreadPenalty
                 + nonMixedDurationPenalty + frontLoadPenalty + timeslotPenalty + roomPenalty;
@@ -1804,11 +2096,11 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
 //                }
 
                 ArrayList<Integer> y = solution.getVariable(j);
-                slot2=getTimeslot(y);
+                slot2 = getTimeslot(y);
 //                while (y.get(slot2) == 0) {
 //                    slot2++;
 //                }
-                if(slot1==-1||slot2==-1){
+                if (slot1 == -1 || slot2 == -1) {
                     conflicts = Integer.MAX_VALUE;
                     break;
                 }
@@ -1955,7 +2247,7 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
     }
 
     public int getTimeslot(ArrayList<Integer> exam) {
-        
+
         for (int i = 0; i < exam.size(); i++) {
             if (exam.get(i) != -1) {
                 return i;
@@ -1973,32 +2265,32 @@ public final class MultiobjectiveETP extends AbstractIntegerMatrixProblem {
         }
 //        System.out.println("Room not found for exam "+exam.toString());
         return -1;
-    }    
-    
+    }
+
     @Override
-    public int[] getRoomCapacities(){
-        int [] roomCapacities = new int[roomVector.size()];
-        for(int i=0; i<roomVector.size();i++){
-            roomCapacities[i]=roomVector.get(i).capacity;
+    public int[] getRoomCapacities() {
+        int[] roomCapacities = new int[roomVector.size()];
+        for (int i = 0; i < roomVector.size(); i++) {
+            roomCapacities[i] = roomVector.get(i).capacity;
         }
         return roomCapacities;
     }
-    
+
     @Override
-    public int [] getExamEnrollments(){
-        int [] examEnrollments = new int[examVector.size()];
-        for(int i=0; i<examVector.size();i++){
-            examEnrollments[i]=examVector.get(i).studentsCount;
+    public int[] getExamEnrollments() {
+        int[] examEnrollments = new int[examVector.size()];
+        for (int i = 0; i < examVector.size(); i++) {
+            examEnrollments[i] = examVector.get(i).studentsCount;
         }
         return examEnrollments;
     }
-    
+
     @Override
-    public int getNumberOfTimeslots(){
+    public int getNumberOfTimeslots() {
         return numberOfTimeSlots;
     }
-    
-    public ArrayList getLargestExams(){
+
+    public ArrayList getLargestExams() {
         return largestExams;
     }
 }
