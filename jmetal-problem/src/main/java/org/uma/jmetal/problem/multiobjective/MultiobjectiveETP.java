@@ -1808,19 +1808,28 @@ System.out.println("\tRoom " + selectedRoom + " @ timeslot " + selectedTimeslot 
                 if (conflictMatrix[exam1.examId][exam2.examId] != 0) {
 System.out.println("\t\tDeallocating exam " + exam2.examId);
                     boolean exists = false;
-                    for (Conflict con : timeRoomPair.conflicts) {
-                        if (con.conflictingExam.examId == exam2.examId) {
+                    TimeslotRoomPair timeRoomPair2=null;
+                        for(TimeslotRoomPair trP:conflictMap.get(exam2.examId)){
+                            if(trP.timeslot1==timeRoomPair.timeslot1&&trP.room1==timeRoomPair.room1){
+                                timeRoomPair2=trP;
+                                conflictMap.get(exam2.examId).remove(trP);
+                                break;
+                            }
+                        }
+                    
+                    for (Conflict con : timeRoomPair2.conflicts) {
+                        if (con.conflictingExam.examId == exam1.examId) {
                             con.evictionCount++;
                             exists = true;
                             break;
                         }
                     }
                     if (!exists) {
-                        timeRoomPair.conflicts.add(new Conflict(exam2, 1));
+                        timeRoomPair2.conflicts.add(new Conflict(exam2, 1));
                     }
-                    timeRoomPair.computeRank();
+                    timeRoomPair2.computeRank();
 System.out.println("\ttmpTimeRoomPair.computeRank()= "+timeRoomPair.rank);                 
-                    conflictMap.get(exam2.examId).add(timeRoomPair);
+                    conflictMap.get(exam2.examId).add(timeRoomPair2);
 
                     currentSolution.getVariable(exam2.examId).set(exam2.timeslot.id, -1);
 
