@@ -1771,21 +1771,22 @@ System.out.println("\tEvicting " + examsInSelRoomAtSelTime.size() + " exams in r
                         for(TimeslotRoomPair trP:conflictMap.get(e.examId)){
                             if(trP.timeslot1==timeRoomPair.timeslot1&&trP.room1==timeRoomPair.room1){
                                 timeRoomPair2=trP;
+                                conflictMap.get(e.examId).remove(trP);
                                 break;
                             }
                         }
                         for (Conflict con : timeRoomPair2.conflicts) {
-                            if (con.conflictingExam.examId == e.examId) {
+                            if (con.conflictingExam.examId == exam1.examId) {
                                 con.evictionCount++;
                                 exists = true;
                                 break;
                             }
                         }
                         if (!exists) {
-                            timeRoomPair.conflicts.add(new Conflict(e, 1));
+                            timeRoomPair2.conflicts.add(new Conflict(e, 1));
                         }
-                        timeRoomPair.computeRank();
-                        conflictMap.get(e.examId).add(timeRoomPair);
+                        timeRoomPair2.computeRank();
+                        conflictMap.get(e.examId).add(timeRoomPair2);
                     }
 System.out.println("\tFree seats now = " + roomVector.get(selectedRoom).getFreeSeats(selectedTimeslot));
                 } else {
